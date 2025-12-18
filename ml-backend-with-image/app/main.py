@@ -1,30 +1,21 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.models import ReportIn, ReportStatus
-from app.pipeline import classify_report, initialize_models
+from app.pipeline import classify_report
 
-app = FastAPI(title="Civic ML Backend (with Image)")
+app = FastAPI(title="Civic ML Backend API")
 
-# Enable CORS for local frontends
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:3001",
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
 
-@app.on_event("startup")
-def startup_event():
-    # initialize optional ML models (CLIP or zero-shot) if available
-    initialize_models()
+@app.get("/")
+def health():
+    return {"status": "ML API running"}
 
-@app.post("/submit", response_model=ReportStatus)
-def submit_report(report: ReportIn):
-    result = classify_report(report.dict())
-    return result
+@app.post("/submit")
+def submit_report(data: dict):
+    return classify_report(data)
