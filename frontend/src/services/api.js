@@ -1,9 +1,13 @@
 const API_BASE_URL =
   process.env.REACT_APP_API_BASE || 'http://localhost:5001/api';
 
+const ML_BASE_URL =
+  process.env.REACT_APP_ML_BASE || 'http://localhost:8000';
+
 class ApiService {
   constructor() {
     this.baseURL = API_BASE_URL;
+    this.mlBaseURL = ML_BASE_URL;
   }
 
   // Helper method to get auth headers
@@ -22,6 +26,35 @@ class ApiService {
       throw new Error(error.message || 'Something went wrong');
     }
     return response.json();
+  }
+
+  // ================= FILE UPLOADS =================
+  async uploadImage(file) {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const headers = {};
+    const token = localStorage.getItem('civicconnect_token');
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${this.baseURL}/upload/image`, {
+      method: 'POST',
+      headers,
+      body: formData
+    });
+    return this.handleResponse(response);
+  }
+
+  // ================= ML VALIDATION =================
+  async validateReportWithML(payload) {
+    const response = await fetch(`${this.mlBaseURL}/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return this.handleResponse(response);
   }
 
   // ================= AUTH =================
