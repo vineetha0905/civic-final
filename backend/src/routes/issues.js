@@ -11,26 +11,52 @@ const {
   validateIssueFilters
 } = require('../middleware/validation');
 
-// Public routes (with optional auth for upvoting)
-router.get('/', validateIssueFilters, validatePagination, optionalAuth, issueController.getIssues);
-router.get('/nearby', issueController.getNearbyIssues);
-router.get('/stats', issueController.getIssueStats);
+/* ===============================
+   SAFE BOUND CONTROLLER METHODS
+================================ */
+const getIssues = issueController.getIssues.bind(issueController);
+const getNearbyIssues = issueController.getNearbyIssues.bind(issueController);
+const getIssueStats = issueController.getIssueStats.bind(issueController);
+const createIssue = issueController.createIssue.bind(issueController);
+const getIssue = issueController.getIssue.bind(issueController);
+const updateIssue = issueController.updateIssue.bind(issueController);
+const deleteIssue = issueController.deleteIssue.bind(issueController);
+const upvoteIssue = issueController.upvoteIssue.bind(issueController);
+const removeUpvote = issueController.removeUpvote.bind(issueController);
+const getIssueComments = issueController.getIssueComments.bind(issueController);
+const addComment = issueController.addComment.bind(issueController);
+const getUserIssues = issueController.getUserIssues.bind(issueController);
 
-// Protected routes
-router.post('/', authenticate, validateIssueCreation, issueController.createIssue);
-router.get('/:id', validateObjectId('id'), optionalAuth, issueController.getIssue);
-router.put('/:id', authenticate, validateObjectId('id'), validateIssueUpdate, issueController.updateIssue);
-router.delete('/:id', authenticate, validateObjectId('id'), issueController.deleteIssue);
+/* ===============================
+   PUBLIC ROUTES
+================================ */
+router.get('/', validateIssueFilters, validatePagination, optionalAuth, getIssues);
+router.get('/nearby', getNearbyIssues);
+router.get('/stats', getIssueStats);
 
-// Upvoting
-router.post('/:id/upvote', authenticate, validateObjectId('id'), issueController.upvoteIssue);
-router.delete('/:id/upvote', authenticate, validateObjectId('id'), issueController.removeUpvote);
+/* ===============================
+   PROTECTED ROUTES
+================================ */
+router.post('/', authenticate, validateIssueCreation, createIssue);
+router.get('/:id', validateObjectId('id'), optionalAuth, getIssue);
+router.put('/:id', authenticate, validateObjectId('id'), validateIssueUpdate, updateIssue);
+router.delete('/:id', authenticate, validateObjectId('id'), deleteIssue);
 
-// Comments
-router.get('/:id/comments', validateObjectId('id'), validatePagination, issueController.getIssueComments);
-router.post('/:id/comments', authenticate, validateObjectId('id'), validateCommentCreation, issueController.addComment);
+/* ===============================
+   UPVOTING
+================================ */
+router.post('/:id/upvote', authenticate, validateObjectId('id'), upvoteIssue);
+router.delete('/:id/upvote', authenticate, validateObjectId('id'), removeUpvote);
 
-// User issues
-router.get('/user/:userId', authenticate, validateObjectId('userId'), validatePagination, issueController.getUserIssues);
+/* ===============================
+   COMMENTS
+================================ */
+router.get('/:id/comments', validateObjectId('id'), validatePagination, getIssueComments);
+router.post('/:id/comments', authenticate, validateObjectId('id'), validateCommentCreation, addComment);
+
+/* ===============================
+   USER ISSUES
+================================ */
+router.get('/user/:userId', authenticate, validateObjectId('userId'), validatePagination, getUserIssues);
 
 module.exports = router;
