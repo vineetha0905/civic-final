@@ -8,8 +8,7 @@ import {
   Calendar, 
   User, 
   ThumbsUp, 
-  MessageCircle, 
-  Camera,
+  MessageCircle,
   CheckCircle,
   Clock,
   AlertTriangle,
@@ -71,7 +70,6 @@ const IssueDetail = ({ user, isAdmin }) => {
       }
     } catch (error) {
       console.error('Error fetching issue data:', error);
-      // Fallback to mock data
       try {
         const mockIssues = {
           '1': {
@@ -115,7 +113,7 @@ const IssueDetail = ({ user, isAdmin }) => {
             category: 'Street Lighting',
             priority: 'high',
             assignedTo: 'Electrical Department',
-            reportedBy: user.name,
+            reportedBy: user?.name || 'User',
             timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
             image: null
           }
@@ -126,7 +124,6 @@ const IssueDetail = ({ user, isAdmin }) => {
           setIssue(foundIssue);
         }
 
-        // Mock comments
         setComments([
           {
             id: 1,
@@ -153,12 +150,10 @@ const IssueDetail = ({ user, isAdmin }) => {
 
   const handleUpvote = async () => {
     try {
-      // Optimistic toggle
       const togglingToUpvoted = !isUpvoted;
       setIsUpvoted(togglingToUpvoted);
       setIssue(prev => ({ ...prev, upvotes: prev.upvotes + (togglingToUpvoted ? 1 : -1) }));
 
-      // Call appropriate API
       if (togglingToUpvoted) {
         await apiService.upvoteIssue(id);
       } else {
@@ -166,7 +161,6 @@ const IssueDetail = ({ user, isAdmin }) => {
       }
     } catch (error) {
       console.error('Error toggling upvote:', error);
-      // Revert optimistic update
       setIsUpvoted(prev => !prev);
       setIssue(prev => ({ ...prev, upvotes: prev.upvotes + (isUpvoted ? 1 : -1) }));
       toast.error('Failed to update upvote. Please try again.');
@@ -180,14 +174,15 @@ const IssueDetail = ({ user, isAdmin }) => {
     try {
       const commentData = {
         content: newComment,
-        userId: user.id,
-        author: isAdmin ? 'Admin User' : user.name,
+        userId: user?.id,
+        author: isAdmin ? 'Admin User' : user?.name || 'User',
         isAdmin: isAdmin
       };
 
       const response = await apiService.addComment(id, commentData);
       setComments(prev => [...prev, response]);
       setNewComment('');
+      toast.success('Comment added successfully');
     } catch (error) {
       console.error('Error adding comment:', error);
       toast.error('Failed to add comment. Please try again.');
@@ -209,45 +204,29 @@ const IssueDetail = ({ user, isAdmin }) => {
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      'reported': { class: 'status-reported', text: 'Reported', icon: AlertTriangle },
-      'in-progress': { class: 'status-in-progress', text: 'In Progress', icon: Clock },
-      'resolved': { class: 'status-resolved', text: 'Resolved', icon: CheckCircle }
+      'reported': { bg: 'bg-red-50', text: 'text-red-700', label: 'REPORTED' },
+      'in-progress': { bg: 'bg-yellow-50', text: 'text-yellow-700', label: 'IN PROGRESS' },
+      'resolved': { bg: 'bg-green-50', text: 'text-green-700', label: 'RESOLVED' }
     };
-    
     const config = statusConfig[status] || statusConfig['reported'];
-    const IconComponent = config.icon;
-    
     return (
-      <span className={`status-badge ${config.class}`} style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: '0.3rem' 
-      }}>
-        <IconComponent size={12} />
-        {config.text}
+      <span className={`${config.bg} ${config.text} px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wide`}>
+        {config.label}
       </span>
     );
   };
 
   const getPriorityBadge = (priority) => {
     const priorityConfig = {
-      'urgent': { bg: '#fee2e2', color: '#dc2626', text: 'URGENT', fontWeight: '700' },
-      'high': { bg: '#fef2f2', color: '#dc2626', text: 'High Priority' },
-      'medium': { bg: '#fef3c7', color: '#d97706', text: 'Medium Priority' },
-      'low': { bg: '#f0f9ff', color: '#2563eb', text: 'Low Priority' }
+      'urgent': { bg: 'bg-red-50', text: 'text-red-700', label: 'URGENT' },
+      'high': { bg: 'bg-red-50', text: 'text-red-700', label: 'High Priority' },
+      'medium': { bg: 'bg-yellow-50', text: 'text-yellow-700', label: 'Medium Priority' },
+      'low': { bg: 'bg-blue-50', text: 'text-blue-700', label: 'Low Priority' }
     };
-    
     const config = priorityConfig[priority] || priorityConfig['medium'];
     return (
-      <span style={{
-        background: config.bg,
-        color: config.color,
-        padding: '0.3rem 0.8rem',
-        borderRadius: '15px',
-        fontSize: '0.8rem',
-        fontWeight: config.fontWeight || '500'
-      }}>
-        {config.text}
+      <span className={`${config.bg} ${config.text} px-2.5 py-1 rounded-full text-xs font-medium ml-2`}>
+        {config.label}
       </span>
     );
   };
@@ -280,245 +259,143 @@ const IssueDetail = ({ user, isAdmin }) => {
 
   if (isLoading) {
     return (
-      <div className="form-container" style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(180deg, #123244 0%, #1e4359 28%, #3f6177 62%, #d8c7bd 100%)'
-      }}>
-        <div style={{
-          width: '50px',
-          height: '50px',
-          border: '4px solid rgba(255, 255, 255, 0.3)',
-          borderTop: '4px solid white',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }}></div>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   if (!issue) {
     return (
-      <div className="form-container" style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(180deg, #123244 0%, #1e4359 28%, #3f6177 62%, #d8c7bd 100%)'
-      }}>
-        <div style={{
-          width: '50px',
-          height: '50px',
-          border: '4px solid rgba(255, 255, 255, 0.3)',
-          borderTop: '4px solid white',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }}></div>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
       </div>
     );
   }
 
-  return (
-    <div className="form-container" style={{ padding: '0' }}>
-      {/* Header */}
-      <div style={{ 
-        background: 'white',
-        padding: '1rem 2rem',
-        borderBottom: '1px solid #e2e8f0',
-        position: 'sticky',
-        top: 0,
-        zIndex: 10
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <button 
-              onClick={() => navigate(isAdmin ? '/admin' : '/citizen')}
-              style={{ 
-                background: 'none', 
-                border: 'none', 
-                color: '#1e4359', 
-                cursor: 'pointer',
-                marginRight: '1rem'
-              }}
-            >
-              <ArrowLeft size={20} />
-            </button>
-            <h1 style={{ 
-              fontSize: '1.3rem', 
-              fontWeight: '700', 
-              color: '#1e293b',
-              margin: 0
-            }}>
-              Issue Details
-            </h1>
-          </div>
+  const [lat, lng] = issue.coordinates || [];
 
-          {isAdmin && (
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              {issue.status === 'reported' && (
-                <button 
-                  className="btn-secondary"
-                  onClick={handleAssign}
-                  style={{ fontSize: '0.8rem' }}
-                >
-                  Assign Officer
-                </button>
-              )}
-              {issue.status === 'in-progress' && (
-                <button 
-                  className="btn-primary"
-                  onClick={() => handleStatusUpdate('resolved')}
-                  style={{ fontSize: '0.8rem' }}
-                >
-                  Mark Resolved
-                </button>
-              )}
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <button
+                onClick={() => navigate(isAdmin ? '/admin' : '/citizen')}
+                className="mr-3 p-1 text-gray-700 hover:text-gray-900"
+              >
+                <ArrowLeft size={20} />
+              </button>
+              <h1 className="text-xl font-bold text-gray-900">Issue Details</h1>
             </div>
-          )}
+
+            {isAdmin && (
+              <div className="flex gap-2">
+                {issue.status === 'reported' && (
+                  <button
+                    onClick={handleAssign}
+                    className="px-4 py-2 bg-gray-100 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                  >
+                    Assign Officer
+                  </button>
+                )}
+                {issue.status === 'in-progress' && (
+                  <button
+                    onClick={() => handleStatusUpdate('resolved')}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    Mark Resolved
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      <div style={{ padding: '2rem' }}>
-        {/* Issue Header */}
-        <div style={{ 
-          background: 'white',
-          padding: '2rem',
-          borderRadius: '15px',
-          marginBottom: '1.5rem',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.08)'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1.5rem' }}>
-            <div style={{ flex: 1 }}>
-              <h2 style={{ 
-                fontSize: '1.5rem', 
-                fontWeight: '700', 
-                color: '#1e293b',
-                marginBottom: '1rem'
-              }}>
+      <div className="px-6 py-6 max-w-6xl mx-auto">
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mb-6">
+          <div className="flex justify-between items-start mb-4 gap-4">
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold text-gray-900 mb-3">
                 {issue.title}
               </h2>
               
-              <div style={{ 
-                display: 'flex', 
-                flexWrap: 'wrap',
-                gap: '1rem',
-                marginBottom: '1rem'
-              }}>
+              <div className="flex flex-wrap gap-2 mb-4">
                 {getStatusBadge(issue.status)}
                 {getPriorityBadge(issue.priority)}
               </div>
 
-              <div style={{ 
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-                gap: '1rem',
-                fontSize: '0.9rem',
-                color: '#64748b'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <MapPin size={16} />
-                  <span>{issue.location?.name || 'Location not specified'}</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600 mb-4">
+                <div className="flex items-center gap-2">
+                  <MapPin size={16} className="text-gray-400" />
+                  <span>{issue.location}</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Calendar size={16} />
+                <div className="flex items-center gap-2">
+                  <Calendar size={16} className="text-gray-400" />
                   <span>{formatDate(issue.timestamp)}</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <User size={16} />
-                  <span>Reported by: {issue.reportedBy?.name || 'Anonymous'}</span>
+                <div className="flex items-center gap-2">
+                  <User size={16} className="text-gray-400" />
+                  <span>Reported by: {issue.reportedBy || 'Anonymous'}</span>
                 </div>
-                {issue.assignedTo && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Settings size={16} />
-                    <span>Assigned to: {issue.assignedTo?.name || 'Unassigned'}</span>
+                {issue.assignedTo && issue.assignedTo !== 'Unassigned' && (
+                  <div className="flex items-center gap-2">
+                    <Settings size={16} className="text-gray-400" />
+                    <span>Assigned to: {issue.assignedTo}</span>
                   </div>
                 )}
               </div>
+
+              {lat && lng && (
+                <div className="text-sm text-gray-500 mb-4">
+                  <span>Lat: {lat.toFixed(4)}, Lng: {lng.toFixed(4)}</span>
+                </div>
+              )}
             </div>
           </div>
 
-          <div style={{ 
-            padding: '1rem',
-            background: '#f8fafc',
-            borderRadius: '8px',
-            marginBottom: '1rem'
-          }}>
-            <strong style={{ color: '#1e293b', fontSize: '0.9rem' }}>Category:</strong>
-            <span style={{ marginLeft: '0.5rem', color: '#64748b' }}>{issue.category}</span>
+          <div className="bg-gray-50 rounded-lg p-4 mb-4">
+            <span className="text-sm font-medium text-gray-900">Category: </span>
+            <span className="text-sm text-gray-600">{issue.category}</span>
           </div>
 
-          <div style={{ marginBottom: '1.5rem' }}>
-            <h3 style={{ 
-              fontSize: '1rem', 
-              fontWeight: '600', 
-              color: '#1e293b',
-              marginBottom: '0.8rem'
-            }}>
-              Description
-            </h3>
-            <p style={{ 
-              color: '#64748b', 
-              lineHeight: 1.6,
-              fontSize: '1rem'
-            }}>
+          <div className="mb-4">
+            <h3 className="text-base font-semibold text-gray-900 mb-2">Description</h3>
+            <p className="text-gray-600 leading-relaxed">
               {issue.description}
             </p>
           </div>
 
-          {/* Image if available */}
           {issue.image && (
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ 
-                fontSize: '1rem', 
-                fontWeight: '600', 
-                color: '#1e293b',
-                marginBottom: '0.8rem'
-              }}>
-                Evidence
-              </h3>
-              <div style={{ background: '#f8fafc', borderRadius: '8px', overflow: 'hidden', maxWidth: '500px' }}>
-                <img 
-                  src={issue.image} 
-                  alt="Issue evidence" 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            <div className="mb-4">
+              <h3 className="text-base font-semibold text-gray-900 mb-2">Evidence</h3>
+              <div className="rounded-lg overflow-hidden max-w-2xl">
+                <img
+                  src={issue.image}
+                  alt="Issue evidence"
+                  className="w-full h-auto object-cover"
                   onError={(e) => { e.currentTarget.style.display = 'none'; }}
                 />
               </div>
             </div>
           )}
 
-          {/* Action Buttons */}
           {!isAdmin && (
-            <div style={{ 
-              display: 'flex', 
-              gap: '1rem',
-              paddingTop: '1rem',
-              borderTop: '1px solid #f1f5f9'
-            }}>
-              <button 
-                className={`upvote-btn ${isUpvoted ? 'upvoted' : ''}`}
+            <div className="flex gap-3 pt-4 border-t border-gray-200">
+              <button
                 onClick={handleUpvote}
-                style={{ fontSize: '0.9rem' }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+                  isUpvoted
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-gray-100 border border-gray-300 text-gray-700 hover:bg-gray-200'
+                }`}
               >
                 <ThumbsUp size={16} />
                 {issue.upvotes} {isUpvoted ? 'Upvoted' : 'Upvote'}
               </button>
-              
-              <button className="upvote-btn" style={{ fontSize: '0.9rem' }}>
+              <button className="px-4 py-2 bg-gray-100 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors flex items-center gap-2">
                 <MessageCircle size={16} />
                 Comment
               </button>
@@ -526,28 +403,11 @@ const IssueDetail = ({ user, isAdmin }) => {
           )}
         </div>
 
-        {/* Location Map */}
-        <div style={{ 
-          background: 'white',
-          padding: '1.5rem',
-          borderRadius: '15px',
-          marginBottom: '2rem',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
-          overflow: 'hidden',
-          position: 'relative',
-          zIndex: 0
-        }}>
-          <h3 style={{ 
-            fontSize: '1.1rem', 
-            fontWeight: '600', 
-            color: '#1e293b',
-            marginBottom: '1rem'
-          }}>
-            Location
-          </h3>
-          <div style={{ height: '300px', position: 'relative' }}>
-            <IssueMap 
-              issues={[issue]} 
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mb-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Location</h3>
+          <div className="h-64 rounded-lg overflow-hidden">
+            <IssueMap
+              issues={[issue]}
               center={issue.coordinates}
               showCenterMarker={false}
               onMarkerClick={() => {}}
@@ -555,229 +415,108 @@ const IssueDetail = ({ user, isAdmin }) => {
           </div>
         </div>
 
-        {/* Progress Timeline */}
-        <div style={{ 
-          background: 'white',
-          padding: '1.5rem',
-          borderRadius: '15px',
-          marginBottom: '1.5rem',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
-          position: 'relative',
-          zIndex: 1
-        }}>
-          <h3 style={{ 
-            fontSize: '1.1rem', 
-            fontWeight: '600', 
-            color: '#1e293b',
-            marginBottom: '1rem'
-          }}>
-            Progress Timeline
-          </h3>
-          
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center',
-            gap: '2rem',
-            padding: '1rem',
-            background: '#f8fafc',
-            borderRadius: '8px'
-          }}>
-            <div style={{ 
-              display: 'flex', 
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '0.5rem',
-              fontSize: '0.8rem'
-            }}>
-              <div style={{ 
-                width: '30px', 
-                height: '30px', 
-                borderRadius: '50%', 
-                background: '#10b981',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white'
-              }}>
-                <AlertTriangle size={16} />
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mb-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Progress Timeline</h3>
+          <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+            <div className="flex flex-col items-center gap-2 text-xs">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                issue.status === 'reported' || issue.status === 'in-progress' || issue.status === 'resolved'
+                  ? 'bg-green-500' : 'bg-gray-300'
+              }`}>
+                <AlertTriangle size={16} className="text-white" />
               </div>
-              <span style={{ color: '#10b981', fontWeight: '500' }}>Reported</span>
+              <span className={`font-medium ${
+                issue.status === 'reported' || issue.status === 'in-progress' || issue.status === 'resolved'
+                  ? 'text-green-600' : 'text-gray-400'
+              }`}>Reported</span>
             </div>
             
-            <div style={{ 
-              flex: 1,
-              height: '3px', 
-              background: issue.status === 'reported' ? '#e5e7eb' : '#10b981'
-            }} />
+            <div className={`flex-1 h-1 rounded ${
+              issue.status === 'in-progress' || issue.status === 'resolved' ? 'bg-green-500' : 'bg-gray-300'
+            }`}></div>
             
-            <div style={{ 
-              display: 'flex', 
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '0.5rem',
-              fontSize: '0.8rem'
-            }}>
-              <div style={{ 
-                width: '30px', 
-                height: '30px', 
-                borderRadius: '50%', 
-                background: issue.status === 'reported' ? '#e5e7eb' : '#3b82f6',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white'
-              }}>
-                <Clock size={16} />
+            <div className="flex flex-col items-center gap-2 text-xs">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                issue.status === 'in-progress' || issue.status === 'resolved'
+                  ? 'bg-blue-500' : 'bg-gray-300'
+              }`}>
+                <Clock size={16} className="text-white" />
               </div>
-              <span style={{ 
-                color: issue.status === 'reported' ? '#9ca3af' : '#3b82f6', 
-                fontWeight: '500' 
-              }}>
-                In Progress
-              </span>
+              <span className={`font-medium ${
+                issue.status === 'in-progress' || issue.status === 'resolved'
+                  ? 'text-blue-600' : 'text-gray-400'
+              }`}>In Progress</span>
             </div>
             
-            <div style={{ 
-              flex: 1,
-              height: '3px', 
-              background: issue.status === 'resolved' ? '#10b981' : '#e5e7eb'
-            }} />
+            <div className={`flex-1 h-1 rounded ${
+              issue.status === 'resolved' ? 'bg-green-500' : 'bg-gray-300'
+            }`}></div>
             
-            <div style={{ 
-              display: 'flex', 
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '0.5rem',
-              fontSize: '0.8rem'
-            }}>
-              <div style={{ 
-                width: '30px', 
-                height: '30px', 
-                borderRadius: '50%', 
-                background: issue.status === 'resolved' ? '#10b981' : '#e5e7eb',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white'
-              }}>
-                <CheckCircle size={16} />
+            <div className="flex flex-col items-center gap-2 text-xs">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                issue.status === 'resolved' ? 'bg-green-500' : 'bg-gray-300'
+              }`}>
+                <CheckCircle size={16} className="text-white" />
               </div>
-              <span style={{ 
-                color: issue.status === 'resolved' ? '#10b981' : '#9ca3af', 
-                fontWeight: '500' 
-              }}>
-                Resolved
-              </span>
+              <span className={`font-medium ${
+                issue.status === 'resolved' ? 'text-green-600' : 'text-gray-400'
+              }`}>Resolved</span>
             </div>
           </div>
         </div>
 
-        {/* Comments Section */}
-        <div style={{ 
-          background: 'white',
-          padding: '1.5rem',
-          borderRadius: '15px',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.08)'
-        }}>
-          <h3 style={{ 
-            fontSize: '1.1rem', 
-            fontWeight: '600', 
-            color: '#1e293b',
-            marginBottom: '1rem'
-          }}>
-            Comments & Updates
-          </h3>
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Comments & Updates</h3>
 
-          {/* Add Comment Form */}
-          <form onSubmit={handleAddComment} style={{ marginBottom: '1.5rem' }}>
+          <form onSubmit={handleAddComment} className="mb-6">
             <textarea
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               placeholder="Add a comment or update..."
-              style={{
-                width: '100%',
-                padding: '1rem',
-                border: '1px solid #e2e8f0',
-                borderRadius: '8px',
-                fontSize: '0.9rem',
-                minHeight: '80px',
-                resize: 'vertical',
-                marginBottom: '0.8rem'
-              }}
+              className="w-full p-4 border border-gray-300 rounded-lg text-sm min-h-[100px] resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-3"
             />
-            <button 
-              type="submit" 
-              className="btn-primary"
-              style={{ fontSize: '0.8rem', padding: '0.6rem 1.2rem' }}
+            <button
+              type="submit"
               disabled={!newComment.trim()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Add Comment
             </button>
           </form>
 
-          {/* Comments List */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="flex flex-col gap-3">
             {comments.map((comment) => (
-              <div 
+              <div
                 key={comment.id}
-                style={{ 
-                  padding: '1rem',
-                  background: comment.isAdmin ? '#f0f9ff' : '#f8fafc',
-                  borderRadius: '8px',
-                  borderLeft: `4px solid ${comment.isAdmin ? '#3b82f6' : '#e2e8f0'}`
-                }}
+                className={`p-4 rounded-lg border-l-4 ${
+                  comment.isAdmin
+                    ? 'bg-blue-50 border-blue-500'
+                    : 'bg-gray-50 border-gray-300'
+                }`}
               >
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '0.5rem'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <strong style={{ 
-                      fontSize: '0.9rem', 
-                      color: '#1e293b' 
-                    }}>
+                <div className="flex justify-between items-center mb-2">
+                  <div className="flex items-center gap-2">
+                    <strong className="text-sm font-semibold text-gray-900">
                       {comment.author}
                     </strong>
                     {comment.isAdmin && (
-                      <span style={{
-                        background: '#3b82f6',
-                        color: 'white',
-                        padding: '0.1rem 0.4rem',
-                        borderRadius: '8px',
-                        fontSize: '0.7rem',
-                        fontWeight: '500'
-                      }}>
+                      <span className="px-2 py-0.5 bg-blue-600 text-white rounded text-xs font-medium">
                         ADMIN
                       </span>
                     )}
                   </div>
-                  <span style={{ 
-                    fontSize: '0.8rem', 
-                    color: '#94a3b8' 
-                  }}>
+                  <span className="text-xs text-gray-500">
                     {getTimeSince(comment.timestamp)}
                   </span>
                 </div>
-                <p style={{ 
-                  color: '#64748b', 
-                  fontSize: '0.9rem',
-                  lineHeight: 1.5,
-                  margin: 0
-                }}>
+                <p className="text-sm text-gray-700 leading-relaxed">
                   {comment.content}
                 </p>
               </div>
             ))}
             
             {comments.length === 0 && (
-              <div style={{ 
-                textAlign: 'center', 
-                padding: '2rem',
-                color: '#94a3b8',
-                fontSize: '0.9rem'
-              }}>
+              <div className="text-center py-8 text-gray-500 text-sm">
                 No comments yet. Be the first to comment!
               </div>
             )}
