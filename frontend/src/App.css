@@ -433,7 +433,7 @@ body {
   padding: 1.5rem 2rem;
   border-bottom: 1px solid #e2e8f0;
   display: flex;
-  justify-content: between;
+  justify-content: space-between;
   align-items: center;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
@@ -464,7 +464,7 @@ body {
 
 .stat-header {
   display: flex;
-  justify-content: between;
+  justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
 }
@@ -514,7 +514,7 @@ body {
 
 .issue-header {
   display: flex;
-  justify-content: between;
+  justify-content: space-between;
   align-items: start;
   margin-bottom: 1rem;
 }
@@ -661,8 +661,22 @@ body {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .welcome-container {
+    padding: 1.5rem 1rem;
+  }
+
   .welcome-title {
     font-size: 2rem;
+  }
+
+  .welcome-illustration {
+    width: 100%;
+    max-width: 320px;
+  }
+  
+  .illustration-content {
+    flex-wrap: wrap;
+    justify-content: center;
   }
   
   .actions-grid {
@@ -684,6 +698,29 @@ body {
   .form-card {
     margin: 0 0.5rem;
     padding: 1.5rem;
+  }
+
+  .issues-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-container {
+    overflow-x: hidden;
+  }
+
+  .admin-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .admin-content {
+    padding: 1rem 0.75rem;
+  }
+
+  .map-container {
+    margin: 0.75rem;
+    height: 320px;
   }
 }
 
