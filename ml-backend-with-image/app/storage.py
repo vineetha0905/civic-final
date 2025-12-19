@@ -9,34 +9,50 @@ seen_reports = set()
 seen_image_hashes = []   # store imagehash objects
 seen_locations = []  # list of tuples (lat, lon, description, category)
 
-def is_duplicate(user_id: str, description: str, category: str) -> bool:
-    key = (user_id or "anon", description.strip().lower(), category.lower())
+def is_duplicate(user_id: str, description: str, category: str, store: bool = True) -> bool:
+    """
+    Check if this exact report has been submitted before.
+    Only returns True for exact matches (same user, same description, same category).
+    Set store=False to check without storing (for validation before acceptance).
+    """
+    # Normalize the description - remove extra whitespace
+    normalized_desc = " ".join(description.strip().lower().split())
+    key = (user_id or "anon", normalized_desc, category.lower())
+    
     if key in seen_reports:
         return True
-    seen_reports.add(key)
+    
+    # Only store if explicitly requested (to avoid false positives)
+    if store:
+        seen_reports.add(key)
     return False
 
-def is_duplicate_image(image_url: str, threshold: int = 5) -> bool:
+def is_duplicate_image(image_url: str, threshold: int = 3, store: bool = True) -> bool:
     """Check if an image is a duplicate using perceptual hash (pHash).
     threshold = maximum Hamming distance allowed to consider images equal.
-    Returns True if duplicate found, else stores the hash and returns False.
+    Lower threshold = more strict (only very similar images are duplicates).
+    Set store=False to check without storing (for validation before acceptance).
     """
     try:
-        resp = requests.get(image_url, timeout=5)
+        resp = requests.get(image_url, timeout=10)
         resp.raise_for_status()
         img = Image.open(io.BytesIO(resp.content)).convert('RGB')
         img_hash = imagehash.phash(img)
 
         for h in seen_image_hashes:
             # imagehash library supports subtraction to get Hamming distance
+            # Lower threshold means only very similar images are considered duplicates
             if abs(img_hash - h) <= threshold:
                 return True
 
-        # store hash
-        seen_image_hashes.append(img_hash)
+        # Only store hash if explicitly requested (to avoid false positives)
+        if store:
+            seen_image_hashes.append(img_hash)
         return False
-    except Exception:
+    except Exception as e:
         # On any failure to fetch/process image, treat as non-duplicate
+        # Log the error for debugging but don't block submission
+        print(f"Image hash check failed for {image_url}: {str(e)}")
         return False
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -49,16 +65,29 @@ def haversine(lat1, lon1, lat2, lon2):
     r = 6371000  # Earth radius in meters
     return c * r
 
-def is_duplicate_location(lat: float, lon: float, description: str, category: str, threshold: int = 20) -> bool:
-    """Return True if an existing report with same text+category exists within threshold meters."""
+def is_duplicate_location(lat: float, lon: float, description: str, category: str, threshold: int = 10, store: bool = True) -> bool:
+    """
+    Return True if an existing report with EXACT same text+category exists within threshold meters.
+    This is strict - requires exact text match and very close location (10 meters).
+    Set store=False to check without storing (for validation before acceptance).
+    """
     try:
+        # Normalize description for comparison
+        normalized_desc = " ".join(description.strip().lower().split())
+        
         for (lat0, lon0, desc0, cat0) in seen_locations:
-            if desc0.strip().lower() == description.strip().lower() and cat0.lower() == category.lower():
+            # Require exact text match (normalized) and same category
+            normalized_desc0 = " ".join(desc0.strip().lower().split())
+            if normalized_desc0 == normalized_desc and cat0.lower() == category.lower():
                 dist = haversine(lat, lon, lat0, lon0)
+                # Only consider duplicate if very close (10 meters) with exact same text
                 if dist <= threshold:
                     return True
-        # not duplicate — store this location for future checks
-        seen_locations.append((lat, lon, description, category))
+        # Not duplicate — store this location only if explicitly requested
+        if store:
+            seen_locations.append((lat, lon, description, category))
         return False
-    except Exception:
+    except Exception as e:
+        # On error, don't block submission
+        print(f"Location duplicate check failed: {str(e)}")
         return False
