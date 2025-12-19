@@ -11,6 +11,9 @@ const EmployeeDashboard = ({ user, setUser }) => {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('list');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const [userCenter, setUserCenter] = useState(null);
+  const [geoStatus, setGeoStatus] = useState('idle');
+  const [geoError, setGeoError] = useState('');
 
   const fetchIssues = async () => {
     try {
@@ -30,6 +33,113 @@ const EmployeeDashboard = ({ user, setUser }) => {
     const interval = setInterval(fetchIssues, 20000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    requestLocation();
+  }, []);
+
+  const requestLocation = async () => {
+    try {
+      setGeoError('');
+      if (!('geolocation' in navigator)) {
+        setGeoStatus('error');
+        setGeoError('Geolocation is not supported by this browser.');
+        setUserCenter([16.0716, 77.9053]);
+        return;
+      }
+      try {
+        if (navigator.permissions && navigator.permissions.query) {
+          const status = await navigator.permissions.query({ name: 'geolocation' });
+          if (status.state === 'denied') {
+            setGeoStatus('denied');
+            setUserCenter([16.0716, 77.9053]);
+            return;
+          }
+        }
+      } catch (_) {}
+      setGeoStatus('requesting');
+      const watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          setUserCenter([latitude, longitude]);
+          setGeoStatus('granted');
+          setGeoError('');
+          navigator.geolocation.clearWatch(watchId);
+        },
+        (err) => {
+          console.warn('Geolocation error:', err);
+          let errorMessage = 'Unable to get your location';
+          if (err.code === 1) {
+            errorMessage = 'Location permission denied. Please allow location access in your browser settings.';
+            setGeoStatus('denied');
+          } else if (err.code === 2) {
+            errorMessage = 'Location unavailable. Please check your device settings.';
+            setGeoStatus('error');
+          } else if (err.code === 3) {
+            errorMessage = 'Location request timed out. Please try again.';
+            setGeoStatus('error');
+          } else {
+            setGeoStatus('error');
+          }
+          setGeoError(errorMessage);
+          setUserCenter([16.0716, 77.9053]);
+          navigator.geolocation.clearWatch(watchId);
+          setTimeout(() => {
+            navigator.geolocation.getCurrentPosition(
+              (pos) => {
+                const { latitude, longitude } = pos.coords;
+                setUserCenter([latitude, longitude]);
+                setGeoStatus('granted');
+                setGeoError('');
+              },
+              () => {},
+              { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+            );
+          }, 1000);
+        },
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 300000 }
+      );
+      setTimeout(() => {
+        navigator.geolocation.clearWatch(watchId);
+      }, 20000);
+    } catch (e) {
+      console.error('Location request error:', e);
+      setGeoStatus('error');
+      setGeoError('Unexpected error requesting location. Using default location.');
+      setUserCenter([16.0716, 77.9053]);
+    }
+  };
+
+  const getRadiusByRole = () => {
+    if (user?.role === 'commissioner') return 60;
+    if (user?.role === 'supervisor') return 20;
+    if (user?.role === 'field-staff' || user?.role === 'employee') return 10;
+    return 10;
+  };
+
+  const toRad = (value) => (value * Math.PI) / 180;
+  const distanceKm = (lat1, lon1, lat2, lon2) => {
+    const R = 6371;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  const filterByRadius = (list, radius) => {
+    const [lat, lng] = userCenter || [16.0716, 77.9053];
+    return list.filter(item => {
+      const [ilat, ilng] = item.location?.coordinates ? [
+        item.location.coordinates.latitude,
+        item.location.coordinates.longitude
+      ] : [];
+      if (typeof ilat !== 'number' || typeof ilng !== 'number') return false;
+      return distanceKm(lat, lng, ilat, ilng) <= radius;
+    });
+  };
 
   const getImageUrl = (issue) => {
     try {
@@ -81,21 +191,39 @@ const EmployeeDashboard = ({ user, setUser }) => {
   };
 
   const getFilteredIssues = () => {
-    if (selectedStatus === 'all') return issues;
-    if (selectedStatus === 'assigned') return issues.filter(i => i.status === 'reported' || i.status === 'assigned');
-    if (selectedStatus === 'in-progress') return issues.filter(i => i.status === 'in-progress' || i.status === 'escalated');
-    if (selectedStatus === 'completed') return issues.filter(i => i.status === 'resolved' || i.status === 'completed');
-    return issues;
+    const unresolvedStatuses = ['reported', 'assigned', 'in-progress', 'escalated'];
+    let filtered = issues.filter(i => unresolvedStatuses.includes(i.status));
+    
+    if (selectedStatus === 'assigned') {
+      filtered = filtered.filter(i => i.status === 'reported' || i.status === 'assigned');
+    } else if (selectedStatus === 'in-progress') {
+      filtered = filtered.filter(i => i.status === 'in-progress' || i.status === 'escalated');
+    } else if (selectedStatus === 'completed') {
+      return [];
+    }
+    
+    const radius = getRadiusByRole();
+    filtered = filterByRadius(filtered, radius);
+    
+    return filtered;
   };
 
   const filteredIssues = getFilteredIssues();
 
-  const statusCounts = {
-    all: issues.length,
-    assigned: issues.filter(i => i.status === 'reported' || i.status === 'assigned').length,
-    'in-progress': issues.filter(i => i.status === 'in-progress' || i.status === 'escalated').length,
-    completed: issues.filter(i => i.status === 'resolved' || i.status === 'completed').length
+  const getStatusCounts = () => {
+    const radius = getRadiusByRole();
+    const unresolvedStatuses = ['reported', 'assigned', 'in-progress', 'escalated'];
+    const unresolvedIssues = issues.filter(i => unresolvedStatuses.includes(i.status));
+    const radiusFiltered = filterByRadius(unresolvedIssues, radius);
+    return {
+      all: radiusFiltered.length,
+      assigned: radiusFiltered.filter(i => i.status === 'reported' || i.status === 'assigned').length,
+      'in-progress': radiusFiltered.filter(i => i.status === 'in-progress' || i.status === 'escalated').length,
+      completed: 0
+    };
   };
+
+  const statusCounts = getStatusCounts();
 
   const getDepartmentLabel = () => {
     if (user?.role === 'commissioner') {
@@ -208,9 +336,33 @@ const EmployeeDashboard = ({ user, setUser }) => {
             ))}
           </div>
 
-          <div className="text-sm text-gray-500">
-            {user?.role === 'commissioner' ? 'Commissioner - All Departments' : `Department: ${getDepartmentLabel()}`}
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-500">
+              {user?.role === 'commissioner' ? 'Commissioner - All Departments' : `Department: ${getDepartmentLabel()}`}
+            </div>
+            <div className="text-sm text-gray-500">
+              Radius: {getRadiusByRole()} km
+            </div>
           </div>
+
+          {geoStatus !== 'granted' && (
+            <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-900">
+              <div className="flex justify-between items-center gap-3 flex-wrap">
+                <span className="flex-1">
+                  {geoStatus === 'requesting' ? 'Requesting your location…' :
+                   geoStatus === 'denied' ? 'Location permission denied. Please allow access to show issues within radius.' :
+                   geoStatus === 'error' ? (geoError || 'Unable to determine your location.') :
+                   'We use your location to show issues within your radius.'}
+                </span>
+                <button
+                  onClick={requestLocation}
+                  className="bg-orange-500 text-white px-3.5 py-1.5 rounded-md text-sm font-medium whitespace-nowrap hover:bg-orange-600"
+                >
+                  Use my location
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -229,11 +381,11 @@ const EmployeeDashboard = ({ user, setUser }) => {
               description: issue.description
             })).filter(i => Array.isArray(i.coordinates) && i.coordinates.length === 2)}
             onMarkerClick={handleMarkerClick}
-            center={filteredIssues[0]?.location?.coordinates ? [
+            center={userCenter || (filteredIssues[0]?.location?.coordinates ? [
               filteredIssues[0].location.coordinates.latitude,
               filteredIssues[0].location.coordinates.longitude
-            ] : [16.0716, 77.9053]}
-            showCenterMarker={false}
+            ] : [16.0716, 77.9053])}
+            showCenterMarker={true}
           />
         </div>
       ) : (

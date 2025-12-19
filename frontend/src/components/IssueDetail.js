@@ -293,7 +293,15 @@ const IssueDetail = ({ user, isAdmin }) => {
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <button
-                onClick={() => navigate(isAdmin ? '/admin' : '/citizen')}
+                onClick={() => {
+                  if (isAdmin) {
+                    navigate('/admin');
+                  } else if (user?.role === 'field-staff' || user?.role === 'supervisor' || user?.role === 'commissioner' || user?.role === 'employee') {
+                    navigate('/employee');
+                  } else {
+                    navigate('/citizen');
+                  }
+                }}
                 className="mr-3 p-1 text-gray-700 hover:text-gray-900"
               >
                 <ArrowLeft size={20} />
