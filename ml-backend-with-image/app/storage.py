@@ -65,22 +65,23 @@ def haversine(lat1, lon1, lat2, lon2):
     r = 6371000  # Earth radius in meters
     return c * r
 
-def is_duplicate_location(lat: float, lon: float, description: str, category: str, threshold: int = 10, store: bool = True) -> bool:
+def is_duplicate_location(lat: float, lon: float, description: str, category: str, threshold: float = 2.0, store: bool = True) -> bool:
     """
     Return True if an existing report with EXACT same text+category exists within threshold meters.
-    This is strict - requires exact text match and very close location (10 meters).
+    This is VERY strict - requires exact text match and extremely close location (default 2 meters).
     Set store=False to check without storing (for validation before acceptance).
+    threshold can be a float for more precise control (e.g., 1.5 meters).
     """
     try:
-        # Normalize description for comparison
+        # Normalize description for comparison (exact match required)
         normalized_desc = " ".join(description.strip().lower().split())
         
         for (lat0, lon0, desc0, cat0) in seen_locations:
-            # Require exact text match (normalized) and same category
+            # Require EXACT text match (normalized) and same category
             normalized_desc0 = " ".join(desc0.strip().lower().split())
             if normalized_desc0 == normalized_desc and cat0.lower() == category.lower():
                 dist = haversine(lat, lon, lat0, lon0)
-                # Only consider duplicate if very close (10 meters) with exact same text
+                # Only consider duplicate if extremely close (threshold meters) with exact same text
                 if dist <= threshold:
                     return True
         # Not duplicate — store this location only if explicitly requested
@@ -88,6 +89,6 @@ def is_duplicate_location(lat: float, lon: float, description: str, category: st
             seen_locations.append((lat, lon, description, category))
         return False
     except Exception as e:
-        # On error, don't block submission
+        # On error, don't block submission - be permissive
         print(f"Location duplicate check failed: {str(e)}")
         return False

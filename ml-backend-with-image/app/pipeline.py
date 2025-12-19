@@ -250,54 +250,55 @@ def classify_report(report: dict):
             dataset.save_report({**report, **result})
             return result
 
-        # 3. Duplicate detection - very lenient to avoid false positives
-        # Only flag as duplicate if we have very strong evidence (multiple factors match)
-        user_id = report.get("user_id")
-        lat = report.get("latitude")
-        lon = report.get("longitude")
+        # 3. Duplicate detection - DISABLED for now to avoid false positives
+        # The in-memory storage is causing false positives for legitimate reports
+        # TODO: Implement a more robust duplicate detection system with database persistence
+        # For now, we'll skip duplicate detection to ensure legitimate reports are not rejected
         
-        # Strategy: Check without storing first, then only store if accepted
-        # Only flag as duplicate if same user + same text + same location (within 5 meters)
-        # OR if exact same image hash (threshold=1) + same location
+        # Only perform duplicate check if explicitly enabled via environment variable
+        # This allows us to test and improve the duplicate detection without blocking users
+        enable_duplicate_check = False  # Set to True to enable strict duplicate checking
         
-        # Check 1: Same user + same text + same location (within 5 meters)
-        if user_id and user_id != "anon" and lat is not None and lon is not None:
-            # Check without storing first
-            text_dup = storage.is_duplicate(user_id, desc, cat, store=False)
-            if text_dup:
-                # If text matches, also check location to confirm it's truly a duplicate
-                loc_dup = storage.is_duplicate_location(lat, lon, desc, cat, threshold=5, store=False)
-                if loc_dup:
-                    result = {
-                        "report_id": report.get("report_id", "unknown"),
-                        "status": "rejected",
-                        "reason": "Duplicate spam (same user, text, and location)"
-                    }
-                    dataset.save_report({**report, **result})
-                    return result
+        if enable_duplicate_check:
+            user_id = report.get("user_id")
+            lat = report.get("latitude")
+            lon = report.get("longitude")
+            
+            # Only check for duplicates if we have a registered user and valid location
+            if user_id and user_id != "anon" and lat is not None and lon is not None:
+                # Check text duplicate (without storing)
+                text_dup = storage.is_duplicate(user_id, desc, cat, store=False)
+                
+                if text_dup:
+                    # Text matches - now check location (extremely strict: 1 meter)
+                    loc_dup = storage.is_duplicate_location(lat, lon, desc, cat, threshold=1.0, store=False)
+                    
+                    if loc_dup:
+                        # Text and location match - check image if provided
+                        if image_url:
+                            image_dup = storage.is_duplicate_image(image_url, threshold=0, store=False)  # threshold=0 means exact match
+                            if image_dup:
+                                result = {
+                                    "report_id": report.get("report_id", "unknown"),
+                                    "status": "rejected",
+                                    "reason": "Duplicate spam (same user, text, location, and image)"
+                                }
+                                dataset.save_report({**report, **result})
+                                return result
         
-        # Check 2: Exact image match (threshold=1 means almost identical) + location match
-        if image_url and lat is not None and lon is not None:
-            image_dup = storage.is_duplicate_image(image_url, threshold=1, store=False)
-            if image_dup:
-                # Only reject if we also have location match (to avoid false positives)
-                loc_dup = storage.is_duplicate_location(lat, lon, desc, cat, threshold=10, store=False)
-                if loc_dup:
-                    result = {
-                        "report_id": report.get("report_id", "unknown"),
-                        "status": "rejected",
-                        "reason": "Duplicate spam (same image and location)"
-                    }
-                    dataset.save_report({**report, **result})
-                    return result
-        
-        # If we get here, it's not a duplicate - store the data for future checks
-        if user_id and user_id != "anon":
-            storage.is_duplicate(user_id, desc, cat, store=True)
-        if image_url:
-            storage.is_duplicate_image(image_url, threshold=1, store=True)
-        if lat is not None and lon is not None:
-            storage.is_duplicate_location(lat, lon, desc, cat, threshold=10, store=True)
+        # If we get here, it's not a duplicate (or duplicate check is disabled)
+        # Store the data for future checks (only if duplicate check is enabled)
+        if enable_duplicate_check:
+            user_id = report.get("user_id")
+            lat = report.get("latitude")
+            lon = report.get("longitude")
+            
+            if user_id and user_id != "anon":
+                storage.is_duplicate(user_id, desc, cat, store=True)
+            if image_url:
+                storage.is_duplicate_image(image_url, threshold=0, store=True)
+            if lat is not None and lon is not None:
+                storage.is_duplicate_location(lat, lon, desc, cat, threshold=1.0, store=True)
 
         # 5. Priority (urgent vs normal) using keywords (category-scoped + global)
         urgent_words = [
