@@ -15,15 +15,31 @@ class EmployeeController {
       const filter = {};
 
       if (employeeRoles.includes(user.role)) {
-        // Field Staff: Only see complaints assigned to them in their department
+        // Field Staff: See complaints in their department (either assigned to them OR assigned to department)
         if (user.role === 'field-staff' || user.role === 'employee') {
-          // Must be assigned to this user - this is the primary filter
-          filter.assignedTo = user._id;
+          // Get user's departments
+          const userDepartments = user.departments && user.departments.length > 0 
+            ? user.departments 
+            : (user.department ? [user.department] : []);
           
-          // Note: We don't filter by department here because:
-          // 1. If an issue is assigned to this employee, they should see it regardless
-          // 2. The assignment process already ensures department matching
-          // 3. This prevents issues from not showing up due to department mismatches
+          // Show issues that are either:
+          // 1. Assigned specifically to this user, OR
+          // 2. Assigned to the department (assignedRole set but assignedTo is null/empty) and match user's department
+          filter.$or = [
+            { assignedTo: user._id }, // Specifically assigned to this user
+            {
+              // Assigned to department (assignedRole exists but assignedTo is null or not set)
+              assignedRole: { $exists: true },
+              $or: [
+                { assignedTo: null },
+                { assignedTo: { $exists: false } }
+              ],
+              // Must match user's department
+              category: userDepartments.includes('All') 
+                ? { $exists: true } // If user has 'All', show all department-assigned issues
+                : { $in: userDepartments }
+            }
+          ];
         }
         // Supervisor: See complaints assigned to them + escalated from field-staff
         else if (user.role === 'supervisor') {
@@ -162,11 +178,14 @@ class EmployeeController {
         return res.status(404).json({ success: false, message: 'Issue not found' });
       }
 
-      // Authorization: allow if admin OR assigned to user OR role-based access
+      // Authorization: allow if admin OR assigned to user OR department-assigned OR role-based access
       const user = req.user;
       const employeeRoles = ['field-staff', 'supervisor', 'commissioner', 'employee'];
       const isAssignedToUser = issue.assignedTo?.toString() === user._id.toString();
       const isAdmin = user.role === 'admin';
+      
+      // Check if issue is assigned to department (assignedRole exists but assignedTo is null)
+      const isAssignedToDepartment = issue.assignedRole && !issue.assignedTo;
       
       let isAuthorized = isAdmin || isAssignedToUser;
       
@@ -176,6 +195,12 @@ class EmployeeController {
           ? user.departments 
           : (user.department ? [user.department] : []);
         
+        // If issue is assigned to department and user's department matches, allow resolution
+        if (isAssignedToDepartment && (userDepartments.includes('All') || userDepartments.includes(issue.category))) {
+          isAuthorized = true;
+        }
+        
+        // Also allow if user's department matches issue category (for backward compatibility)
         if (userDepartments.includes('All') || userDepartments.includes(issue.category)) {
           isAuthorized = true;
         }
@@ -197,8 +222,9 @@ class EmployeeController {
         return res.status(403).json({ success: false, message: 'Not authorized to resolve this issue' });
       }
 
-      // If not assigned or assigned to another but same department, reassign to current employee for accountability
-      if (!isAssignedToUser) {
+      // If issue is assigned to department (not a specific user), assign it to current employee when they resolve it
+      // This provides accountability - the employee who resolves becomes the assigned employee
+      if (!isAssignedToUser && isAssignedToDepartment) {
         issue.assignedTo = req.user._id;
         issue.assignedBy = req.user._id;
         issue.assignedAt = new Date();

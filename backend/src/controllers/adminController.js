@@ -326,21 +326,13 @@ class AdminController {
           });
         }
       } else {
-        // Auto-assign: Find existing employee within 10km radius matching the department
-        const issueLat = issue.location?.coordinates?.latitude;
-        const issueLon = issue.location?.coordinates?.longitude;
+        // Auto-assign: Assign to ALL employees in the department (not a specific employee)
+        // This allows all employees in that department to see and resolve the issue
         const issueCategory = issue.category;
-
-        if (!issueLat || !issueLon) {
-          return res.status(400).json({ 
-            success: false, 
-            message: 'Issue location is required for auto-assignment' 
-          });
-        }
 
         // Find all active employees with matching department
         const employeeRoles = ['field-staff', 'supervisor', 'commissioner', 'employee'];
-        const allEmployees = await User.find({
+        const departmentEmployees = await User.find({
           role: { $in: employeeRoles },
           isActive: true,
           $or: [
@@ -349,53 +341,52 @@ class AdminController {
           ]
         });
 
-        // Filter employees within 10km radius
-        const nearbyEmployees = allEmployees.filter(emp => {
-          const empLat = emp.address?.coordinates?.latitude;
-          const empLon = emp.address?.coordinates?.longitude;
-          
-          if (!empLat || !empLon) {
-            return false; // Skip employees without location data
-          }
-          
-          const distance = this.calculateDistance(issueLat, issueLon, empLat, empLon);
-          return distance <= 10; // Within 10km
-        });
-
-        if (nearbyEmployees.length === 0) {
+        if (departmentEmployees.length === 0) {
           return res.status(400).json({ 
             success: false, 
-            message: 'No active employee found within 10km radius for this department. Please assign manually.' 
+            message: 'No active employees found for this department. Please assign manually.' 
           });
         }
 
-        // Select the employee with the least assignments (prioritize field-staff)
-        // Sort by: 1) role priority (field-staff first), 2) number of assigned issues
-        const employeesWithAssignmentCount = await Promise.all(
-          nearbyEmployees.map(async (emp) => {
-            const assignmentCount = await Issue.countDocuments({ 
-              assignedTo: emp._id, 
-              status: { $in: ['reported', 'in-progress', 'assigned', 'escalated'] } 
-            });
-            return { employee: emp, assignmentCount };
-          })
+        // Don't assign to a specific user - assign to the department
+        // Set assignedRole to 'field-staff' to indicate it's assigned to field staff level
+        const assignedRole = 'field-staff';
+        
+        // Update issue: set status to in-progress, assignedRole, but leave assignedTo as null
+        // This way all employees in the department can see it
+        issue.assignedRole = assignedRole;
+        issue.assignedBy = req.user._id;
+        issue.assignedAt = new Date();
+        issue.status = 'in-progress';
+        
+        // Calculate escalation deadline based on priority and role
+        if (issue.priority) {
+          const deadline = issue.calculateEscalationDeadline(issue.priority, assignedRole);
+          issue.escalationDeadline = deadline;
+        }
+        
+        await issue.save();
+
+        // Notify all employees in the department
+        const notificationPromises = departmentEmployees.map(emp => 
+          notificationService.notifyIssueAssignment(issue, emp, req.user)
         );
+        await Promise.all(notificationPromises);
 
-        // Sort: field-staff first, then by assignment count (least assigned first)
-        employeesWithAssignmentCount.sort((a, b) => {
-          const rolePriority = { 'field-staff': 1, 'employee': 2, 'supervisor': 3, 'commissioner': 4 };
-          const aPriority = rolePriority[a.employee.role] || 5;
-          const bPriority = rolePriority[b.employee.role] || 5;
-          
-          if (aPriority !== bPriority) {
-            return aPriority - bPriority;
+        res.json({
+          success: true,
+          message: `Issue assigned to department. ${departmentEmployees.length} employees notified.`,
+          data: { 
+            issue,
+            assignedToDepartment: issueCategory,
+            employeesNotified: departmentEmployees.length
           }
-          return a.assignmentCount - b.assignmentCount;
         });
-
-        assignedUser = employeesWithAssignmentCount[0].employee;
+        
+        return; // Exit early since we've handled the assignment
       }
 
+      // Manual assignment: assign to specific user
       // Determine assigned role based on user's role
       let assignedRole = null;
       if (assignedUser.role === 'field-staff' || assignedUser.role === 'employee') {

@@ -19,6 +19,8 @@ const connectDB = require('./config/database');
 
 // Import escalation job
 const escalationJob = require('./jobs/escalationJob');
+// Import cleanup job
+const cleanupJob = require('./jobs/cleanupJob');
 
 // Initialize Express app
 const app = express();
@@ -29,6 +31,11 @@ connectDB();
 // Start auto-escalation cron job
 if (process.env.NODE_ENV !== 'test') {
   escalationJob.start();
+}
+
+// Start cleanup cron job (deletes resolved issues after 5 days)
+if (process.env.NODE_ENV !== 'test') {
+  cleanupJob.start();
 }
 
 // Security middleware
