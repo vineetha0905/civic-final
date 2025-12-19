@@ -23,7 +23,11 @@ class ApiService {
   async handleResponse(response) {
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Network error' }));
-      throw new Error(error.message || 'Something went wrong');
+      // Include reason in error message if available
+      const errorMessage = error.reason 
+        ? `${error.message || 'Error'}: ${error.reason}`
+        : (error.message || 'Something went wrong');
+      throw new Error(errorMessage);
     }
     return response.json();
   }
@@ -56,15 +60,36 @@ class ApiService {
         body: JSON.stringify(payload)
       });
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('ML backend error:', errorText);
-        throw new Error(`ML validation failed: ${response.status} ${response.statusText}`);
+      // Read response as text first, then parse as JSON
+      const responseText = await response.text();
+      let result;
+      
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        // If JSON parsing fails, it's not a valid response
+        console.error('ML backend returned non-JSON response:', responseText);
+        throw new Error(`ML validation failed: ${response.status} ${response.statusText}. ${responseText}`);
       }
       
-      return await response.json();
+      // If status is not ok, handle the error
+      if (!response.ok) {
+        // If the result has a status field (like "rejected"), return it
+        // This allows the ML backend to return rejections with proper status codes
+        if (result && result.status) {
+          return result;
+        }
+        // Otherwise, it's a validation error - throw with detail
+        console.error('ML backend validation error:', result);
+        const errorMsg = result.detail || result.message || `ML validation failed: ${response.status} ${response.statusText}`;
+        throw new Error(errorMsg);
+      }
+      
+      // Success response (200) - return the result (which may have status: "accepted" or "rejected")
+      return result;
     } catch (error) {
       console.error('Error calling ML backend:', error);
+      // Re-throw the error so the caller can handle it
       throw error;
     }
   }

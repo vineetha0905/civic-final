@@ -255,10 +255,11 @@ class IssueController {
             mlResult = parsed || mlResult;
 
             if (mlResult.status === 'rejected') {
+              const reason = mlResult.reason || 'Report rejected by validator';
               return res.status(400).json({
                 success: false,
-                message: 'Issue rejected by ML',
-                reason: mlResult.reason
+                message: reason, // Use reason as the main message for clarity
+                reason: reason
               });
             }
           } else {

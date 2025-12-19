@@ -266,17 +266,35 @@ const ReportIssue = ({ user }) => {
       try {
         mlResult = await apiService.validateReportWithML(mlPayload);
         console.log('ML validation result:', mlResult);
+        
+        // Check if ML backend rejected the report
+        if (mlResult && mlResult.status === 'rejected') {
+          setIsSubmitting(false);
+          const reason = mlResult.reason || 'Report rejected by validator';
+          toast.error(`Report rejected: ${reason}`);
+          return;
+        }
+        
+        // If status is not 'accepted', also reject
+        if (mlResult && mlResult.status && mlResult.status !== 'accepted') {
+          setIsSubmitting(false);
+          const reason = mlResult.reason || 'Report rejected by validator';
+          toast.error(`Report rejected: ${reason}`);
+          return;
+        }
       } catch (mlError) {
         console.error('ML validation error:', mlError);
-        toast.warning('ML validation failed, proceeding with submission...');
-        mlResult = { status: 'accepted' };
-      }
-
-      if (mlResult && mlResult.status !== 'accepted') {
-        setIsSubmitting(false);
-        const reason = mlResult.reason || 'Report rejected by validator';
-        toast.error(`Report rejected: ${reason}`);
-        return;
+        // Only proceed if it's a network/connection error, not a rejection
+        if (mlError.message && mlError.message.includes('Failed to fetch')) {
+          toast.warning('ML validation service unavailable, proceeding with submission...');
+          mlResult = { status: 'accepted' };
+        } else {
+          // For other errors, show the error and stop submission
+          setIsSubmitting(false);
+          const errorMsg = mlError.message || 'ML validation failed';
+          toast.error(`ML validation error: ${errorMsg}`);
+          return;
+        }
       }
 
       // 2) Submit to backend only if accepted
