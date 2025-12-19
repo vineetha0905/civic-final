@@ -85,7 +85,7 @@ const EmployeeLogin = ({ setUser, setIsAdmin }) => {
               <Lock size={16} style={{ display: 'inline', marginRight: '0.5rem' }} />
               Password
             </label>
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative', width: '100%' }}>
               <input
                 type={showPassword ? 'text' : 'password'}
                 className="form-input"
@@ -93,7 +93,7 @@ const EmployeeLogin = ({ setUser, setIsAdmin }) => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                style={{ paddingRight: '45px' }}
+                style={{ width: '100%', paddingRight: '45px', boxSizing: 'border-box' }}
               />
               <button
                 type="button"
@@ -110,7 +110,8 @@ const EmployeeLogin = ({ setUser, setIsAdmin }) => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  padding: '4px'
+                  padding: '4px',
+                  zIndex: 1
                 }}
                 tabIndex={-1}
               >

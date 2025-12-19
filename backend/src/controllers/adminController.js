@@ -620,19 +620,30 @@ class AdminController {
       }
 
       // Create new employee
-      const employee = new User({
+      const employeeData = {
         name,
         employeeId,
         password,
         role,
         departments: departmentArray,
-        department: departmentArray.length === 1 ? departmentArray[0] : (departmentArray.includes('All') ? 'All' : departmentArray[0]),
-        email: email || null,
-        mobile: mobile || null,
         isVerified: true,
         isActive: true
-      });
+      };
 
+      // Set department field (single value for compatibility)
+      if (departmentArray.length === 1) {
+        employeeData.department = departmentArray[0];
+      } else if (departmentArray.includes('All')) {
+        employeeData.department = 'All';
+      } else if (departmentArray.length > 0) {
+        employeeData.department = departmentArray[0];
+      }
+
+      // Add optional fields only if provided
+      if (email) employeeData.email = email;
+      if (mobile) employeeData.mobile = mobile;
+
+      const employee = new User(employeeData);
       await employee.save();
 
       res.status(201).json({

@@ -69,26 +69,27 @@ class EmployeeController {
         filter.assignedTo = user._id;
       }
 
-      // Apply status filter
+      // Always filter out resolved issues - show only unresolved
+      const unresolvedStatuses = { $in: ['reported', 'in-progress', 'escalated'] };
+      
       if (status && status !== 'all') {
-        if (filter.$or) {
-          // Add status to all $or conditions
-          filter.$or = filter.$or.map(condition => ({
-            ...condition,
-            status: status
-          }));
+        // If specific status requested, use it (but still exclude resolved)
+        if (status === 'resolved') {
+          filter.status = 'resolved';
         } else {
           filter.status = status;
         }
-      } else if (!filter.status && !filter.$or) {
-        // Default: show all non-resolved issues (only if no $or condition)
-        filter.status = { $in: ['reported', 'in-progress', 'escalated'] };
-      } else if (filter.$or && !status) {
-        // For $or conditions, add status filter to each condition
-        filter.$or = filter.$or.map(condition => ({
-          ...condition,
-          status: { $in: ['reported', 'in-progress', 'escalated'] }
-        }));
+      } else {
+        // Default: show only unresolved issues
+        if (filter.$or) {
+          // For $or conditions, add unresolved status filter to each condition
+          filter.$or = filter.$or.map(condition => ({
+            ...condition,
+            status: unresolvedStatuses
+          }));
+        } else {
+          filter.status = unresolvedStatuses;
+        }
       }
 
       // Apply category filter if provided

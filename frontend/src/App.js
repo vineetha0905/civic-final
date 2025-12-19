@@ -14,6 +14,7 @@ import AdminLogin from './components/AdminLogin';
 import AdminDashboard from './components/AdminDashboard';
 import EmployeeLogin from './components/EmployeeLogin';
 import EmployeeDashboard from './components/EmployeeDashboard';
+import EmployeeProfile from './components/EmployeeProfile';
 import IssueDetail from './components/IssueDetail';
 import ResolveIssue from './components/ResolveIssue';
 import Leaderboard from './components/Leaderboard';
@@ -189,7 +190,10 @@ function App() {
 
             {/* Employee Routes */}
             <Route path="/employee" element={
-              user && !isAdmin ? <EmployeeDashboard user={user} /> : <Navigate to="/login" />
+              user && !isAdmin ? <EmployeeDashboard user={user} setUser={setUser} /> : <Navigate to="/login" />
+            } />
+            <Route path="/employee/profile" element={
+              user && !isAdmin ? <EmployeeProfile user={user} setUser={setUser} /> : <Navigate to="/login" />
             } />
             <Route path="/employee/resolve/:id" element={
               user && !isAdmin ? <ResolveIssue /> : <Navigate to="/login" />

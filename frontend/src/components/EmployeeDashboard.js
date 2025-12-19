@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import apiService from '../services/api';
-import { MapPin, ExternalLink, CheckCircle } from 'lucide-react';
+import { MapPin, ExternalLink, CheckCircle, User, LogOut } from 'lucide-react';
 
 const EmployeeDashboard = ({ user }) => {
   const navigate = useNavigate();
@@ -40,14 +40,49 @@ const EmployeeDashboard = ({ user }) => {
 
   if (loading) return <div className="form-container">Loading...</div>;
 
+  const getDepartmentLabel = () => {
+    if (user?.role === 'commissioner') {
+      return 'All Departments';
+    }
+    const depts = user?.departments && user.departments.length > 0 
+      ? user.departments 
+      : (user?.department ? [user.department] : []);
+    return depts.join(', ') || '—';
+  };
+
   return (
     <div className="form-container" style={{ padding: '0' }}>
       <div style={{ background: 'white', padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <h2 style={{ margin: 0 }}>My Department Issues</h2>
-          <div style={{ color: '#64748b', fontSize: '0.9rem' }}>Department: {user?.department || '—'}</div>
+          <h2 style={{ margin: 0 }}>
+            {user?.role === 'commissioner' ? 'All Unresolved Issues' : 'My Department Issues'}
+          </h2>
+          <div style={{ color: '#64748b', fontSize: '0.9rem' }}>
+            {user?.role === 'commissioner' ? 'Commissioner - All Departments' : `Department: ${getDepartmentLabel()}`}
+          </div>
         </div>
-        <button className="btn-secondary" onClick={() => { localStorage.removeItem('civicconnect_token'); localStorage.removeItem('civicconnect_user'); window.location.href = '/'; }}>Logout</button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button 
+            className="btn-secondary" 
+            onClick={() => navigate('/employee/profile')}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            <User size={16} />
+            Profile
+          </button>
+          <button 
+            className="btn-secondary" 
+            onClick={() => { 
+              localStorage.removeItem('civicconnect_token'); 
+              localStorage.removeItem('civicconnect_user'); 
+              window.location.href = '/'; 
+            }}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            <LogOut size={16} />
+            Logout
+          </button>
+        </div>
       </div>
 
       <div style={{ padding: '1rem 1.5rem' }}>
