@@ -619,29 +619,39 @@ class AdminController {
         });
       }
 
+      // Determine single department value for compatibility
+      let singleDepartment = null;
+      if (departmentArray.length === 1) {
+        singleDepartment = departmentArray[0];
+      } else if (departmentArray.includes('All')) {
+        singleDepartment = 'All';
+      } else if (departmentArray.length > 0) {
+        singleDepartment = departmentArray[0];
+      }
+
       // Create new employee
       const employeeData = {
-        name,
-        employeeId,
-        password,
-        role,
+        name: name.trim(),
+        employeeId: employeeId.trim(),
+        password: password,
+        role: role,
         departments: departmentArray,
         isVerified: true,
         isActive: true
       };
 
-      // Set department field (single value for compatibility)
-      if (departmentArray.length === 1) {
-        employeeData.department = departmentArray[0];
-      } else if (departmentArray.includes('All')) {
-        employeeData.department = 'All';
-      } else if (departmentArray.length > 0) {
-        employeeData.department = departmentArray[0];
+      // Set department field (single value for compatibility) - only if we have a valid value
+      if (singleDepartment && validDepartments.includes(singleDepartment)) {
+        employeeData.department = singleDepartment;
       }
 
-      // Add optional fields only if provided
-      if (email) employeeData.email = email;
-      if (mobile) employeeData.mobile = mobile;
+      // Add optional fields only if provided and valid
+      if (email && email.trim()) {
+        employeeData.email = email.trim().toLowerCase();
+      }
+      if (mobile && mobile.trim()) {
+        employeeData.mobile = mobile.trim();
+      }
 
       const employee = new User(employeeData);
       await employee.save();
@@ -655,12 +665,32 @@ class AdminController {
       });
     } catch (error) {
       console.error('Create employee error:', error);
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        code: error.code,
+        keyPattern: error.keyPattern,
+        keyValue: error.keyValue,
+        errors: error.errors
+      });
+      
       if (error.code === 11000) {
+        const duplicateField = Object.keys(error.keyPattern || {})[0] || 'field';
         return res.status(400).json({
           success: false,
-          message: 'Employee ID or email already exists'
+          message: `${duplicateField === 'employeeId' ? 'Employee ID' : duplicateField} already exists`
         });
       }
+      
+      if (error.name === 'ValidationError') {
+        const validationErrors = Object.values(error.errors || {}).map(err => err.message).join(', ');
+        return res.status(400).json({
+          success: false,
+          message: `Validation error: ${validationErrors}`,
+          error: error.message
+        });
+      }
+      
       res.status(500).json({
         success: false,
         message: 'Server error creating employee',
