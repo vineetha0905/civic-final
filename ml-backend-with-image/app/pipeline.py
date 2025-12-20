@@ -97,6 +97,8 @@ def classify_report(report: dict):
         # STEP 1: Check image against detected category FIRST (BEFORE duplicate check)
         image_url = report.get("image_url")
         if image_url:
+            print(f"[DEBUG] Processing image for category '{category}': {image_url}")
+            
             # CRITICAL: Validate image matches category FIRST
             # If image doesn't match, reject immediately - don't check duplicates
             image_matches = image_matches_category(image_url, category)
@@ -104,24 +106,38 @@ def classify_report(report: dict):
             if not image_matches:
                 # Image doesn't match category - reject immediately
                 # Don't check for duplicates if image doesn't even match
+                print(f"[DEBUG] Image does NOT match category '{category}' - rejecting without duplicate check")
                 return reject(
                     report,
                     "Image does not match the issue description. Please provide an image related to the reported category.",
                     category
                 )
             
+            print(f"[DEBUG] Image matches category '{category}' - proceeding to duplicate check")
+            
             # STEP 2: Only check for duplicates if image matches category
             # We only reach here if image_matches == True
             try:
-                # Check for duplicates with very strict threshold (only exact/near-exact matches)
-                is_dup = storage.is_duplicate_image(image_url, threshold=1, store=False)
+                # Check for duplicates with threshold=0 (EXACT match only - most strict)
+                # This prevents false positives from similar but different images
+                print(f"[DEBUG] Checking for duplicate image: {image_url}")
+                is_dup = storage.is_duplicate_image(image_url, threshold=0, store=False)
+                
                 if is_dup:
+                    print(f"[DEBUG] DUPLICATE DETECTED for URL: {image_url}")
                     return reject(report, "Duplicate image detected. This image has already been used in another report.", category)
+                
+                print(f"[DEBUG] Image is NOT duplicate - storing for future checks")
                 # Only store if not a duplicate (to track for future checks)
-                storage.is_duplicate_image(image_url, threshold=1, store=True)
+                # This ensures we remember this image for future duplicate detection
+                storage.is_duplicate_image(image_url, threshold=0, store=True)
+                print(f"[DEBUG] Image validated and stored successfully")
             except Exception as e:
                 # If duplicate check fails, allow submission (don't block on technical errors)
-                print(f"Duplicate check error (allowing): {str(e)}")
+                print(f"[ERROR] Duplicate check failed (allowing submission): {str(e)}")
+                import traceback
+                print(traceback.format_exc())
+                # Continue - don't block legitimate reports due to technical issues
 
         urgency = detect_urgency(description)
         priority = {

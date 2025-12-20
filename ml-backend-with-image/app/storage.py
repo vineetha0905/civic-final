@@ -7,6 +7,7 @@ from math import radians, cos, sin, asin, sqrt
 # In-memory stores (ephemeral - reset on server restart)
 seen_reports = set()
 seen_image_hashes = []   # store imagehash objects
+seen_image_urls = set()  # store image URLs for quick exact match check
 seen_locations = []  # list of tuples (lat, lon, description, category)
 
 def is_duplicate(user_id: str, description: str, category: str, store: bool = True) -> bool:
@@ -27,27 +28,56 @@ def is_duplicate(user_id: str, description: str, category: str, store: bool = Tr
         seen_reports.add(key)
     return False
 
-def is_duplicate_image(image_url: str, threshold: int = 3, store: bool = True) -> bool:
-    """Check if an image is a duplicate using perceptual hash (pHash).
+def is_duplicate_image(image_url: str, threshold: int = 0, store: bool = True) -> bool:
+    """Check if an image is a duplicate using URL first, then perceptual hash (pHash).
     threshold = maximum Hamming distance allowed to consider images equal.
-    Lower threshold = more strict (only very similar images are duplicates).
+    threshold=0 means EXACT hash match only (most strict).
     Set store=False to check without storing (for validation before acceptance).
     """
+    if not image_url:
+        return False
+    
+    # Step 1: Quick URL-based check (exact match)
+    # Normalize URL (remove query params, fragments that don't affect image)
+    try:
+        from urllib.parse import urlparse, urlunparse
+        parsed = urlparse(image_url)
+        # Remove query and fragment for comparison (they don't change the image)
+        normalized_url = urlunparse((parsed.scheme, parsed.netloc, parsed.path, '', '', ''))
+        
+        if normalized_url in seen_image_urls:
+            print(f"Duplicate detected: Exact URL match for {normalized_url}")
+            return True
+    except Exception as e:
+        print(f"URL normalization failed: {str(e)}")
+        # Continue with hash check
+    
+    # Step 2: Hash-based check (only for exact matches with threshold=0)
     try:
         resp = requests.get(image_url, timeout=10)
         resp.raise_for_status()
         img = Image.open(io.BytesIO(resp.content)).convert('RGB')
         img_hash = imagehash.phash(img)
 
+        # Only check for EXACT matches (threshold=0) to avoid false positives
+        # This means only identical images are considered duplicates
         for h in seen_image_hashes:
-            # imagehash library supports subtraction to get Hamming distance
-            # Lower threshold means only very similar images are considered duplicates
-            if abs(img_hash - h) <= threshold:
+            # With threshold=0, only exact hash matches are duplicates
+            if abs(img_hash - h) == 0:
+                print(f"Duplicate detected: Exact hash match")
                 return True
 
-        # Only store hash if explicitly requested (to avoid false positives)
+        # Only store if explicitly requested and not a duplicate
         if store:
             seen_image_hashes.append(img_hash)
+            try:
+                from urllib.parse import urlparse, urlunparse
+                parsed = urlparse(image_url)
+                normalized_url = urlunparse((parsed.scheme, parsed.netloc, parsed.path, '', '', ''))
+                seen_image_urls.add(normalized_url)
+            except:
+                pass  # If URL normalization fails, still store hash
+        
         return False
     except Exception as e:
         # On any failure to fetch/process image, treat as non-duplicate
