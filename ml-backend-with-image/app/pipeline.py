@@ -146,58 +146,104 @@ def classify_report(report: dict):
             dataset.save_report({**report, **result})
             return result
 
-        # 2. Category is already auto-detected, no need for validation
-        # (Category detection from text_rules is trusted)
-
-        # Note: Duplicate detection is disabled for now to avoid false positives
-        # The in-memory storage is causing false positives for legitimate reports
-        # TODO: Implement a more robust duplicate detection system with database persistence
-        # For now, we'll skip duplicate detection to ensure legitimate reports are not rejected
-        
-        # Only perform duplicate check if explicitly enabled via environment variable
-        # This allows us to test and improve the duplicate detection without blocking users
-        enable_duplicate_check = False  # Set to True to enable strict duplicate checking
-        
-        if enable_duplicate_check:
-            user_id = report.get("user_id")
-            lat = report.get("latitude")
-            lon = report.get("longitude")
-            
-            # Only check for duplicates if we have a registered user and valid location
-            if user_id and user_id != "anon" and lat is not None and lon is not None:
-                # Check text duplicate (without storing)
-                text_dup = storage.is_duplicate(user_id, desc, cat, store=False)
+        # 2. Image-description validation (if image provided)
+        image_url = report.get("image_url")
+        if image_url:
+            try:
+                image_cat = ic.classify_image(image_url)
+                image_label = str(image_cat).lower() if image_cat else "other"
                 
-                if text_dup:
-                    # Text matches - now check location (extremely strict: 1 meter)
-                    loc_dup = storage.is_duplicate_location(lat, lon, desc, cat, threshold=1.0, store=False)
-                    
-                    if loc_dup:
-                        # Text and location match - check image if provided
-                        if image_url:
-                            image_dup = storage.is_duplicate_image(image_url, threshold=0, store=False)  # threshold=0 means exact match
-                            if image_dup:
-                                result = {
-                                    "report_id": report.get("report_id", "unknown"),
-                                    "status": "rejected",
-                                    "reason": "Duplicate spam (same user, text, location, and image)"
-                                }
-                                dataset.save_report({**report, **result})
-                                return result
-        
-        # If we get here, it's not a duplicate (or duplicate check is disabled)
-        # Store the data for future checks (only if duplicate check is enabled)
-        if enable_duplicate_check:
-            user_id = report.get("user_id")
-            lat = report.get("latitude")
-            lon = report.get("longitude")
-            
-            if user_id and user_id != "anon":
-                storage.is_duplicate(user_id, desc, cat, store=True)
-            if image_url:
-                storage.is_duplicate_image(image_url, threshold=0, store=True)
-            if lat is not None and lon is not None:
-                storage.is_duplicate_location(lat, lon, desc, cat, threshold=1.0, store=True)
+                # Map image labels to categories
+                IMAGE_TO_CATEGORY_MAP = {
+                    "Road & Traffic": [
+                        "pothole", "damaged road", "illegal parking", "broken footpath",
+                        "traffic signal not working", "road accident", "road", "street", "traffic",
+                        "speed breaker", "crosswalk", "footpath", "pavement"
+                    ],
+                    "Garbage & Sanitation": [
+                        "garbage dump", "overflowing dustbin", "open drain", "sewage overflow",
+                        "dead animal", "toilet issue", "garbage", "trash", "waste", "bin",
+                        "sanitation", "dirty", "sewage", "cleanliness", "dustbin"
+                    ],
+                    "Street Lighting": [
+                        "streetlight not working", "fallen electric pole", "loose wire", "power outage",
+                        "streetlight", "lamp", "bulb", "pole", "light", "electric pole",
+                        "street lamp", "lighting", "dark area", "electricity", "power",
+                        "broken streetlight", "non-working light", "flickering light", "dim light",
+                        "street lighting", "outdoor lighting", "public lighting", "night lighting"
+                    ],
+                    "Water & Drainage": [
+                        "waterlogging", "pipe burst", "no water supply", "drainage issue", "flood",
+                        "drain", "drainage", "sewage", "sewer", "leak", "leaking", "leakage",
+                        "pipe", "water", "overflow", "water supply", "drainage system"
+                    ],
+                    "Parks & Recreation": [
+                        "tree fallen", "illegal construction", "park maintenance", "encroachment",
+                        "park", "garden", "playground", "tree", "bench", "grass", "lawn",
+                        "recreation", "green space", "park area", "garden area", "flooded park",
+                        "water in park", "park with water", "playground equipment", "walking path",
+                        "fountain", "pond", "lake", "outdoor space", "public space"
+                    ],
+                    "Public Safety": [
+                        "fire", "gas leak", "building collapse", "accident site",
+                        "crime", "robbery", "theft", "violence", "hazard", "danger",
+                        "safety", "harassment", "emergency", "accident"
+                    ],
+                    "Electricity": [
+                        "electric", "electricity", "power", "outage", "wire", "transformer",
+                        "short circuit", "shock", "cable", "meter", "electrical", "voltage", "current"
+                    ]
+                }
+                
+                # Check if image label matches detected category
+                allowed_labels = [label.lower() for label in IMAGE_TO_CATEGORY_MAP.get(cat, [])]
+                image_matches_category = any(label in image_label or image_label in label for label in allowed_labels)
+                
+                if not image_matches_category:
+                    result = {
+                        "report_id": report.get("report_id", "unknown"),
+                        "accept": False,
+                        "status": "rejected",
+                        "category": cat,
+                        "department": cat,
+                        "reason": "Image does not match the issue description. Please provide an image related to the reported issue."
+                    }
+                    dataset.save_report({**report, **result})
+                    return result
+            except Exception as e:
+                # If image classification fails, reject to be safe
+                print(f"Image validation failed: {str(e)}")
+                result = {
+                    "report_id": report.get("report_id", "unknown"),
+                    "accept": False,
+                    "status": "rejected",
+                    "category": cat,
+                    "department": cat,
+                    "reason": "Unable to validate image. Please ensure the image is related to the issue description."
+                }
+                dataset.save_report({**report, **result})
+                return result
+
+        # 3. Image duplicate detection (check independently)
+        if image_url:
+            try:
+                image_dup = storage.is_duplicate_image(image_url, threshold=3, store=False)
+                if image_dup:
+                    result = {
+                        "report_id": report.get("report_id", "unknown"),
+                        "accept": False,
+                        "status": "rejected",
+                        "category": cat,
+                        "department": cat,
+                        "reason": "Duplicate image detected. This image has already been used in another report."
+                    }
+                    dataset.save_report({**report, **result})
+                    return result
+                # Store image hash for future duplicate detection
+                storage.is_duplicate_image(image_url, threshold=3, store=True)
+            except Exception as e:
+                print(f"Image duplicate check failed: {str(e)}")
+                # Continue if duplicate check fails (don't block legitimate reports)
 
         # 4. Detect urgency using text_rules
         urgency = detect_urgency(desc)
@@ -209,15 +255,6 @@ def classify_report(report: dict):
             "low": "low"
         }
         priority = urgency_map.get(urgency, "medium")
-        
-        # 3. Image classification (optional, for future use)
-        image_url = report.get("image_url")
-        image_cat = None
-        if image_url:
-            try:
-                image_cat = ic.classify_image(image_url)
-            except Exception:
-                pass  # Image classification is optional
         
         # Return accepted result with all required fields
         result = {
