@@ -1,6 +1,3 @@
 # Package initialization
-from app.pipeline import initialize_models
-
-# Initialize models on import
-initialize_models()
+# Models will be initialized on startup via main.py
 

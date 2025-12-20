@@ -79,6 +79,18 @@ GENERIC_IMAGE_LABELS = {
 
 
 # ------------------------------------
+# Model initialization
+# ------------------------------------
+def initialize_models():
+    """Initialize ML models (CLIP for image classification)"""
+    try:
+        ic.initialize_clip()
+    except Exception as e:
+        print(f"Model initialization failed (will use fallback): {str(e)}")
+        pass
+
+
+# ------------------------------------
 # Main pipeline
 # ------------------------------------
 def classify_report(report: dict):
