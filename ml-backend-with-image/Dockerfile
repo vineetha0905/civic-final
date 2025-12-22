@@ -1,4 +1,3 @@
-
 FROM python:3.9
 
 RUN useradd -m -u 1000 user
@@ -11,4 +10,17 @@ COPY --chown=user ./requirements.txt requirements.txt
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 COPY --chown=user . /app
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "7860"]
+
+# Use PORT environment variable for Render, default to 7860
+# Render automatically sets PORT environment variable
+ENV PORT=7860
+EXPOSE $PORT
+
+# Make start script executable
+COPY --chown=user start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# Use app.main:app since the FastAPI app is in app/main.py
+# Render can use either the CMD or the start.sh script
+# For Render, use shell form to allow environment variable substitution
+CMD ["/app/start.sh"]

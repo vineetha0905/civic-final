@@ -1,11 +1,27 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from app.pipeline import classify_report
-from app.models import ReportIn
 import traceback
 import os
+import sys
 
-app = FastAPI(title="Civic ML Backend API")
+# Add better error handling for imports
+try:
+    from app.pipeline import classify_report
+    from app.models import ReportIn
+except ImportError as e:
+    print(f"Import error: {e}")
+    print(f"Python path: {sys.path}")
+    raise
+
+app = FastAPI(title="Civic ML Backend API", version="1.0.0")
+
+# Log startup information
+print("=" * 50)
+print("ML Backend API Starting...")
+print(f"Python version: {sys.version}")
+print(f"Working directory: {os.getcwd()}")
+print(f"Python path: {sys.path}")
+print("=" * 50)
 
 # Note: Models are loaded lazily (on first use) to save memory
 # CLIP model will be loaded when first image classification is needed
@@ -34,9 +50,18 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
+# Log CORS configuration
+print(f"CORS configured - allow_origins: {cors_origins}")
+print(f"CORS allow_credentials: False")
+
 @app.get("/")
 def health():
-    return {"status": "ML API running"}
+    return {"status": "ML API running", "version": "1.0.0"}
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint for Render"""
+    return {"status": "healthy", "service": "ML Backend"}
 
 @app.post("/submit")
 async def submit_report(data: ReportIn):
@@ -45,18 +70,23 @@ async def submit_report(data: ReportIn):
     Accepts ReportIn model with required fields: report_id, description
     """
     try:
+        print(f"Received ML validation request: report_id={data.report_id}, description_length={len(data.description or '')}")
+        
         # Convert Pydantic model to dict for pipeline
         report_data = data.dict()
         
         # Validate required fields
         if not report_data.get("report_id") or not report_data.get("description"):
+            print("Validation failed: Missing required fields")
             raise HTTPException(
                 status_code=400, 
                 detail="Missing required fields: report_id and description are required"
             )
         
         # Classify the report
+        print("Starting ML classification...")
         result = classify_report(report_data)
+        print(f"ML classification complete: status={result.get('status')}, category={result.get('category')}")
         return result
     except HTTPException:
         raise
