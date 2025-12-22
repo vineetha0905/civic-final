@@ -286,8 +286,13 @@ const ReportIssue = ({ user }) => {
 
       // 2) Submit to backend only if accepted
       // Optionally map ML priority to backend priority if provided
-      if (mlResult.priority) {
+      if (mlResult && mlResult.priority) {
         issueData.priority = mlResult.priority === 'urgent' ? 'urgent' : 'medium';
+      }
+
+      // Ensure priority is set if not provided
+      if (!issueData.priority) {
+        issueData.priority = 'medium'; // Default priority
       }
 
       const response = await apiService.createIssue(issueData);
