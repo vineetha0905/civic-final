@@ -91,7 +91,7 @@ def initialize_models():
 
 
 # ------------------------------------
-# Main pipeline
+# Main pipeline (OPTIMIZED)
 # ------------------------------------
 def classify_report(report: dict):
     try:

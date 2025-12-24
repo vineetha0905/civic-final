@@ -33,45 +33,106 @@ def classify_image(image_url: str, candidate_labels=None) -> str:
     
     if candidate_labels is None:
         candidate_labels = [
-    # Roads & Transport
-    "pothole", "damaged road", "illegal parking", "broken footpath",
-    "traffic signal not working", "road accident", "road", "street", "traffic",
-    "speed breaker", "crosswalk", "footpath", "pavement",
+     "road", "pothole", "crack", "broken road", "damaged road",
+        "road caved", "road sinking", "uneven road",
+        "traffic", "traffic jam", "congestion",
+        "signal", "traffic signal", "junction", "crossroad",
+        "accident", "collision", "crash", "hit",
+        "speed breaker", "speed bump", "divider",
+        "footpath", "sidewalk", "zebra crossing", "pedestrian",
 
-    # Sanitation & Waste
-    "garbage dump", "overflowing dustbin", "open drain", "sewage overflow",
-    "dead animal", "toilet issue", "garbage", "trash", "waste", "bin",
-    "sanitation", "dirty", "sewage", "cleanliness", "dustbin",
+        "garbage", "trash", "waste", "dump", "dumping",
+        "garbage pile", "waste pile",
+        "dirty", "filthy", "unclean",
+        "bad smell", "toxic smell", "foul smell",
+        "dustbin", "overflowing bin",
+        "sanitation", "sewage", "sewer", "manhole",
 
-    # Electricity & Lighting
-    "streetlight not working", "fallen electric pole", "loose wire", "power outage",
-    "streetlight", "lamp", "bulb", "pole", "light", "electric pole",
-    "street lamp", "lighting", "dark area", "electricity", "power",
-    "broken streetlight", "non-working light", "flickering light", "dim light",
-    "street lighting", "outdoor lighting", "public lighting", "night lighting",
+        # DEAD ANIMAL (strict & safe)
+        "dead", "dead animal", "animal carcass",
+        "dead dog", "dead cat", "dead cow",
+        "dead body",
 
-    # Water Supply & Flood
-    "waterlogging", "pipe burst", "no water supply", "drainage issue", "flood",
-    "drain", "drainage", "sewage", "sewer", "leak", "leaking", "leakage",
-    "pipe", "water", "overflow", "water supply", "drainage system",
+        "mosquito", "flies", "infection", "disease",
 
-    # Environment & Public Spaces
-    "tree fallen", "illegal construction", "park maintenance", "encroachment",
-    "park", "garden", "playground", "tree", "bench", "grass", "lawn",
-    "recreation", "green space", "park area", "garden area", "flooded park",
-    "water in park", "park with water", "playground equipment", "walking path",
-    "fountain", "pond", "lake", "outdoor space", "public space",
+        "water", "no water", "low pressure",
+        "drinking water", "contaminated water",
+        "leak", "leakage", "pipe leak",
+        "pipe burst", "broken pipe",
+        "drain", "drainage", "blocked drain",
+        "overflow", "overflowing drain",
+        "flood", "waterlogging", "stagnant water",
+        "sewage water", "rain water",
 
-    # Safety & Emergency
-    "fire", "gas leak", "building collapse", "accident site",
-    "crime", "robbery", "theft", "violence", "hazard", "danger",
-    "safety", "harassment", "emergency", "accident",
+        "electricity", "electric", "power",
+        "no power", "power cut", "power outage",
+        "wire", "cable", "pole", "electric pole",
+        "transformer", "meter",
+        "short circuit", "spark",
+        "electrocution", "electric shock",
+        "live wire",
 
-    # Noise & Pollution
-    "noise pollution", "air pollution", "industrial waste",
+        "streetlight", "street light", "lamp",
+        "lamp post", "pole light",
+        "not working", "broken light",
+        "flickering", "dim light",
+        "dark", "dark area", "no lighting",
 
-    # General
-    "other"
+         "fire", "smoke", "burning",
+        "gas", "gas leak", "cylinder leak",
+        "collapse", "building collapse",
+        "wall collapse", "roof falling",
+        "crime", "theft", "robbery",
+        "violence", "fight", "assault",
+        "hazard", "danger", "unsafe",
+        "emergency", "life risk",
+
+        "park", "garden", "playground",
+        "children park", "public park",
+        "bench", "swing", "slide",
+        "walking track",
+        "tree", "fallen tree", "tree fallen",
+        "lawn", "grass", "maintenance",
+        "broken fence"
+    # # Roads & Transport
+    # "pothole", "damaged road", "illegal parking", "broken footpath",
+    # "traffic signal not working", "road accident", "road", "street", "traffic",
+    # "speed breaker", "crosswalk", "footpath", "pavement",
+
+    # # Sanitation & Waste
+    # "garbage dump", "overflowing dustbin", "open drain", "sewage overflow",
+    # "dead animal", "toilet issue", "garbage", "trash", "waste", "bin",
+    # "sanitation", "dirty", "sewage", "cleanliness", "dustbin",
+
+    # # Electricity & Lighting
+    # "streetlight not working", "fallen electric pole", "loose wire", "power outage",
+    # "streetlight", "lamp", "bulb", "pole", "light", "electric pole",
+    # "street lamp", "lighting", "dark area", "electricity", "power",
+    # "broken streetlight", "non-working light", "flickering light", "dim light",
+    # "street lighting", "outdoor lighting", "public lighting", "night lighting",
+
+    # # Water Supply & Flood
+    # "waterlogging", "pipe burst", "no water supply", "drainage issue", "flood",
+    # "drain", "drainage", "sewage", "sewer", "leak", "leaking", "leakage",
+    # "pipe", "water", "overflow", "water supply", "drainage system",
+
+    # # Environment & Public Spaces
+    # "tree fallen", "illegal construction", "park maintenance", "encroachment",
+    # "park", "garden", "playground", "tree", "bench", "grass", "lawn",
+    # "recreation", "green space", "park area", "garden area", "flooded park",
+    # "water in park", "park with water", "playground equipment", "walking path",
+    # "fountain", "pond", "lake", "outdoor space", "public space",
+
+    # # Safety & Emergency
+    # "fire", "gas leak", "building collapse", "accident site",
+    # "crime", "robbery", "theft", "violence", "hazard", "danger",
+    # "safety", "harassment", "emergency", "accident",
+
+    # # Noise & Pollution
+    # "noise pollution", "air pollution", "industrial waste",
+
+    # # General
+    # "other"
 ]
 
 

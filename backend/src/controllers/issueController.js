@@ -361,6 +361,57 @@ class IssueController {
       await issue.save();
       await issue.populate('reportedBy', 'name email profileImage');
 
+      // AUTO-ASSIGN TO DEPARTMENT: Automatically assign issue to all employees in the department
+      try {
+        const issueCategory = category;
+        
+        // Find all active employees with matching department
+        const employeeRoles = ['field-staff', 'supervisor', 'commissioner', 'employee'];
+        const departmentEmployees = await User.find({
+          role: { $in: employeeRoles },
+          isActive: true,
+          $or: [
+            { departments: { $in: [issueCategory, 'All'] } },
+            { department: { $in: [issueCategory, 'All'] } }
+          ]
+        });
+
+        if (departmentEmployees.length > 0) {
+          // Assign to department (not a specific user) - this allows all employees in department to see it
+          const assignedRole = 'field-staff';
+          
+          // Set assignedRole and status, but leave assignedTo as null
+          // This way all employees in the department can see and resolve the issue
+          issue.assignedRole = assignedRole;
+          issue.assignedBy = req.user._id; // Admin or system
+          issue.assignedAt = new Date();
+          issue.status = 'in-progress';
+          
+          // Calculate escalation deadline based on priority and role
+          if (issue.priority) {
+            const deadline = issue.calculateEscalationDeadline(issue.priority, assignedRole);
+            issue.escalationDeadline = deadline;
+          }
+          
+          await issue.save();
+
+          // Notify all employees in the department
+          const notificationPromises = departmentEmployees.map(emp => 
+            notificationService.notifyIssueAssignment(issue, emp, req.user)
+          );
+          await Promise.all(notificationPromises);
+          
+          console.log(`✅ Issue auto-assigned to department "${issueCategory}". ${departmentEmployees.length} employees notified.`);
+        } else {
+          // No employees found for this department - issue remains unassigned
+          // Admins can manually assign it later
+          console.log(`⚠️ No active employees found for department "${issueCategory}". Issue will remain unassigned.`);
+        }
+      } catch (assignError) {
+        // Don't fail issue creation if auto-assignment fails
+        console.error('Auto-assignment error (non-blocking):', assignError.message);
+      }
+
       await notificationService.notifyAdminsNewIssue(issue, req.user);
 
       res.status(201).json({

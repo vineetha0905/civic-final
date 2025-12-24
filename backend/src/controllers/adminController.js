@@ -311,9 +311,12 @@ class AdminController {
       }
 
       let assignedUser = null;
-      if (assignedTo) {
+      // Check if assignedTo is provided and not empty/null
+      // Handle both string and non-string values
+      const assignedToValue = assignedTo && typeof assignedTo === 'string' ? assignedTo.trim() : assignedTo;
+      if (assignedToValue && assignedToValue !== '' && assignedToValue !== 'null' && assignedToValue !== null) {
         // Manual assignment - use the provided user ID
-        assignedUser = await User.findById(assignedTo);
+        assignedUser = await User.findById(assignedToValue);
         if (!assignedUser) {
           return res.status(404).json({ success: false, message: 'Assigned user not found' });
         }

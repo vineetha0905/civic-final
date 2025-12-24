@@ -72,7 +72,12 @@ class AuthController {
         }
       }
 
-      if (existingUser) {
+      // If user exists with mobile but is not verified, allow registration to proceed
+      // This handles the case where a user was created but OTP verification wasn't completed
+      if (existingUser && mobile && existingUser.mobile === mobile && !existingUser.isVerified) {
+        // Allow registration to proceed - will update the existing user below
+        console.log('Found existing unverified user with mobile, allowing registration to proceed');
+      } else if (existingUser) {
         // Allow upgrading an existing lightweight account (e.g., created via OTP mobile flow)
         // If Aadhaar is already linked to another user, prevent conflict
         if (
@@ -653,15 +658,19 @@ class AuthController {
     try {
       const { username, password } = req.body;
 
+      // Get admin credentials from environment or use defaults for local development
+      const adminUsername = process.env.ADMIN_USERNAME || 'admin';
+      const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+
       // Simple admin authentication (in production, use proper admin management)
-      if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
+      if (username === adminUsername && password === adminPassword) {
         // Find or create admin user
         let adminUser = await User.findOne({ role: 'admin' });
         
         if (!adminUser) {
           adminUser = new User({
             name: 'Admin User',
-            email: process.env.ADMIN_EMAIL,
+            email: process.env.ADMIN_EMAIL || 'admin@civicconnect.com',
             role: 'admin',
             isVerified: true,
             isActive: true
