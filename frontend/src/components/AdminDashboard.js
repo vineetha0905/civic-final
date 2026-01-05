@@ -285,81 +285,86 @@ const AdminDashboard = ({ user }) => {
                 {filteredIssues.slice(0, 3).map((issue) => (
                   <div 
                     key={issue._id || issue.id} 
-                    className="issue-card"
+                    className="issue-card recent-issue-card"
                     onClick={() => navigate(`/issue/${issue._id || issue.id}`)}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
-                      <div>
-                        <h4 style={{ fontSize: '1.1rem', fontWeight: '600', color: '#1e293b', marginBottom: '0.5rem' }}>
-                          {issue.title}
-                        </h4>
-                        <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '0.3rem' }}>
-                          📍 {issue.location?.name || issue.location}
+                    <div className="flex flex-col gap-4">
+                      {issue.images && issue.images.length > 0 && (
+                        <div className="recent-issue-image-container">
+                          <div className="rounded-lg overflow-hidden bg-gray-50 shadow-sm recent-issue-image">
+                            <img
+                              alt={issue.title}
+                              src={issue.images[0].url || issue.images[0].secure_url || issue.images[0].secureUrl}
+                              className="recent-issue-img"
+                            />
+                          </div>
                         </div>
-                        <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                          Reported by: {issue.reportedBy?.name || 'Citizen'}
+                      )}
+                      <div className="recent-issue-content">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+                          <div>
+                            <h4 style={{ fontSize: '1.1rem', fontWeight: '600', color: '#1e293b', marginBottom: '0.5rem' }}>
+                              {issue.title}
+                            </h4>
+                            <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '0.3rem' }}>
+                              📍 {issue.location?.name || issue.location}
+                            </div>
+                            <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                              Reported by: {issue.reportedBy?.name || 'Citizen'}
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'end' }}>
+                            {getStatusBadge(issue.status)}
+                            {getPriorityBadge(issue.priority)}
+                          </div>
                         </div>
-                    {issue.images && issue.images.length > 0 && (
-                      <div style={{ marginBottom: '0.8rem', borderRadius: '8px', overflow: 'hidden', background: '#f8fafc' }}>
-                        <img
-                          alt={issue.title}
-                          src={issue.images[0].url || issue.images[0].secure_url || issue.images[0].secureUrl}
-                          style={{ width: '100%', height: '200px', objectFit: 'cover' }}
-                        />
-                      </div>
-                    )}
 
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'end' }}>
-                        {getStatusBadge(issue.status)}
-                        {getPriorityBadge(issue.priority)}
-                      </div>
-                    </div>
+                        <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                          {issue.description}
+                        </p>
 
-                    <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                      {issue.description}
-                    </p>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                    Assigned to: <strong>{issue.assignedTo?.name || 'Unassigned'}</strong>
-                    {issue.resolved?.photo?.url && (
-                      <div style={{ marginTop: '0.5rem', fontSize: '0.7rem', color: '#059669' }}>
-                        ✓ Resolved with photo proof
-                        <div style={{ marginTop: '0.3rem', height: 60, borderRadius: 4, overflow: 'hidden', background: '#f8fafc' }}>
-                          <img 
-                            src={issue.resolved.photo.url} 
-                            alt="Resolution proof" 
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                          />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                            Assigned to: <strong>{issue.assignedTo?.name || 'Unassigned'}</strong>
+                            {issue.resolved?.photo?.url && (
+                              <div style={{ marginTop: '0.5rem', fontSize: '0.7rem', color: '#059669' }}>
+                                ✓ Resolved with photo proof
+                                <div style={{ marginTop: '0.3rem', height: 60, borderRadius: 4, overflow: 'hidden', background: '#f8fafc' }}>
+                                  <img 
+                                    src={issue.resolved.photo.url} 
+                                    alt="Resolution proof" 
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            {issue.status === 'reported' && (
+                              <button 
+                                className="btn-secondary"
+                                style={{ fontSize: '0.7rem', padding: '0.3rem 0.8rem' }}
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  const employeeId = prompt('Enter Employee ID to assign (or leave empty for auto-assign):');
+                                  if (employeeId !== null) {
+                                    try {
+                                      await apiService.assignIssue(issue._id || issue.id, { assignedTo: employeeId || null });
+                                      toast.success('Issue assigned');
+                                      const fresh = await apiService.getAdminDashboard();
+                                      setStats(fresh.data || fresh);
+                                    } catch (err) {
+                                      toast.error(`Assign failed: ${err.message}`);
+                                    }
+                                  }
+                                }}
+                              >
+                                Assign
+                              </button>
+                            )}
+                            {/* Admin can only assign issues, not resolve them */}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        {issue.status === 'reported' && (
-                          <button 
-                            className="btn-secondary"
-                            style={{ fontSize: '0.7rem', padding: '0.3rem 0.8rem' }}
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              const employeeId = prompt('Enter Employee ID to assign (or leave empty for auto-assign):');
-                              if (employeeId !== null) {
-                                try {
-                                  await apiService.assignIssue(issue._id || issue.id, { assignedTo: employeeId || null });
-                                  toast.success('Issue assigned');
-                                  const fresh = await apiService.getAdminDashboard();
-                                  setStats(fresh.data || fresh);
-                                } catch (err) {
-                                  toast.error(`Assign failed: ${err.message}`);
-                                }
-                              }
-                            }}
-                          >
-                            Assign
-                          </button>
-                        )}
-                        {/* Admin can only assign issues, not resolve them */}
                       </div>
                     </div>
                   </div>
@@ -604,7 +609,7 @@ const AdminDashboard = ({ user }) => {
         {/* Analytics */}
         {selectedView === 'analytics' && (
           <div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '1.5rem', color: '#1e293b' }}>
+            <h3 className="text-2xl font-semibold text-gray-800 mb-6">
               Analytics Dashboard
             </h3>
             

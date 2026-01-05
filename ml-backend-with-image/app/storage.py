@@ -160,10 +160,12 @@ def is_duplicate_image_from_bytes(image_bytes: bytes, threshold: int = 0, store:
         # Open image directly from bytes and compute hash
         img = Image.open(io.BytesIO(image_bytes)).convert('RGB')
         img_hash = imagehash.phash(img)
-        img_hash_int = int(str(img_hash), 16)  # Convert to integer for comparison
+        img_hash_str = str(img_hash)  # Keep as string for proper comparison
 
         # Load all accepted reports from dataset
         accepted_reports = _load_accepted_reports()
+        
+        print(f"[DEBUG] Checking image hash '{img_hash_str}' against {len(accepted_reports)} accepted reports")
         
         # Check each accepted report for image hash
         for report in accepted_reports:
@@ -171,19 +173,36 @@ def is_duplicate_image_from_bytes(image_bytes: bytes, threshold: int = 0, store:
             report_hash = report.get("image_hash")
             if report_hash is not None:
                 try:
-                    # Compare hashes (exact match for threshold=0)
-                    if isinstance(report_hash, str):
-                        report_hash_int = int(report_hash, 16)
-                    else:
-                        report_hash_int = int(report_hash)
+                    # Convert report_hash to string for comparison
+                    report_hash_str = str(report_hash).strip()
                     
-                    # With threshold=0, only exact hash matches are duplicates
-                    if abs(img_hash_int - report_hash_int) == 0:
-                        print(f"[DEBUG] Image duplicate detected: Exact hash match in dataset")
-                        return True
-                except (ValueError, TypeError):
+                    # For threshold=0, use exact string match (most reliable)
+                    if threshold == 0:
+                        if img_hash_str == report_hash_str:
+                            print(f"[DEBUG] Image duplicate detected: Exact hash match '{img_hash_str}' == '{report_hash_str}'")
+                            return True
+                    else:
+                        # For threshold > 0, use Hamming distance
+                        try:
+                            # Convert strings to ImageHash objects for Hamming distance
+                            img_hash_obj = imagehash.hex_to_hash(img_hash_str)
+                            report_hash_obj = imagehash.hex_to_hash(report_hash_str)
+                            hamming_dist = img_hash_obj - report_hash_obj  # ImageHash objects support subtraction for Hamming distance
+                            
+                            if hamming_dist <= threshold:
+                                print(f"[DEBUG] Image duplicate detected: Hamming distance {hamming_dist} <= threshold {threshold}")
+                                return True
+                        except (ValueError, TypeError) as hash_err:
+                            # If Hamming distance calculation fails, try exact match as fallback
+                            if img_hash_str == report_hash_str:
+                                print(f"[DEBUG] Image duplicate detected: Exact hash match (fallback)")
+                                return True
+                            continue
+                except (ValueError, TypeError) as e:
+                    print(f"[DEBUG] Skipping invalid hash value in report: {e}")
                     continue  # Skip invalid hash values
         
+        print(f"[DEBUG] Image hash '{img_hash_str}' is NOT a duplicate")
         return False
     except Exception as e:
         # On any failure to process image, treat as non-duplicate

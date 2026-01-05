@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useNavigate, Link } from 'react-router-dom';
 import { LanguageContext } from '../App';
@@ -12,6 +12,7 @@ const Login = ({ setUser, setIsAdmin }) => {
   const [otp, setOtp] = useState('');
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
@@ -24,6 +25,7 @@ const Login = ({ setUser, setIsAdmin }) => {
     try {
       const response = await apiService.sendOtpByAadhaar(aadhaar);
       setIsOtpSent(true);
+      setResendCooldown(30); // Start 60-second cooldown
       
       // In development mode, show the OTP
       if (response.data && response.data.otp) {
@@ -43,6 +45,40 @@ const Login = ({ setUser, setIsAdmin }) => {
       setIsLoading(false);
     }
   };
+
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0) {
+      return; // Prevent resend during cooldown
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await apiService.sendOtpByAadhaar(aadhaar);
+      setResendCooldown(60); // Start 60-second cooldown
+      setOtp(''); // Clear the previous OTP input
+      
+      // In development mode, show the OTP
+      if (response.data && response.data.otp) {
+        toast.success(`OTP resent. Dev OTP: ${response.data.otp}`);
+      } else {
+        toast.success('OTP resent to your phone');
+      }
+    } catch (error) {
+      toast.error(`Error resending OTP: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Cooldown timer effect
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => {
+        setResendCooldown(resendCooldown - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
 
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
@@ -80,36 +116,34 @@ const Login = ({ setUser, setIsAdmin }) => {
   // Guest login removed as requested
 
   return (
-    <div className="login-container">
-      <div className="login-card">
+    <div className="min-h-screen bg-gradient-to-b from-[#123244] via-[#1e4359] via-[#3f6177] to-[#d8c7bd] flex items-center justify-center px-4 py-8 sm:px-6 sm:py-12">
+      <div className="bg-white/95 backdrop-blur-xl p-6 sm:p-8 md:p-10 rounded-2xl sm:rounded-3xl w-full max-w-md shadow-xl border border-white/30">
         <button 
           onClick={() => navigate('/')}
-          style={{ 
-            background: 'none', 
-            border: 'none', 
-            color: '#1e4359', 
-            cursor: 'pointer',
-            marginBottom: '1rem'
-          }}
+          className="bg-none border-none text-[#1e4359] cursor-pointer mb-4 p-1 hover:opacity-70 transition-opacity"
         >
           <ArrowLeft size={20} />
         </button>
 
-        <div className="login-header">
-          <h1 className="login-title">{t('login')}</h1>
-          <p className="login-subtitle">Enter your Aadhaar number to continue</p>
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 mb-2">
+            {t('login')}
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600 font-normal">
+            Enter your Aadhaar number to continue
+          </p>
         </div>
 
         {!isOtpSent ? (
-          <form onSubmit={handleSendOtp} className="login-form">
-            <div className="form-group">
-              <label className="form-label">
-                <IdCard size={16} style={{ display: 'inline', marginRight: '0.5rem' }} />
+          <form onSubmit={handleSendOtp} className="flex flex-col gap-4 sm:gap-6">
+            <div className="flex flex-col gap-2">
+              <label className="font-medium text-gray-800 text-sm sm:text-base flex items-center gap-2">
+                <IdCard size={16} className="inline" />
                 Aadhaar Number
               </label>
               <input
                 type="tel"
-                className="form-input"
+                className="px-4 py-3 sm:py-3.5 border-2 border-gray-200 rounded-xl text-base sm:text-lg transition-all duration-300 focus:outline-none focus:border-[#1e4359] focus:ring-4 focus:ring-[#1e4359]/10 font-['Fredoka',sans-serif]"
                 placeholder="Enter 12-digit Aadhaar number"
                 value={aadhaar}
                 onChange={(e) => setAadhaar(e.target.value.replace(/\D/g, ''))}
@@ -121,48 +155,61 @@ const Login = ({ setUser, setIsAdmin }) => {
 
             <button 
               type="submit" 
-              className="btn-primary" 
+              className="bg-gradient-to-r from-[#1e4359] to-[#3f6177] text-white border-none px-4 py-3 sm:py-3.5 rounded-xl text-base sm:text-lg font-semibold cursor-pointer transition-all duration-300 hover:shadow-lg hover:transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none font-['Fredoka',sans-serif]"
               disabled={isLoading || aadhaar.length !== 12}
             >
               {isLoading ? 'Sending OTP...' : 'Send OTP'}
             </button>
           </form>
         ) : (
-          <form onSubmit={handleVerifyOtp} className="login-form">
-            <div className="form-group">
-              <label className="form-label">
-                <Key size={16} style={{ display: 'inline', marginRight: '0.5rem' }} />
+          <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4 sm:gap-6">
+            <div className="flex flex-col gap-2">
+              <label className="font-medium text-gray-800 text-sm sm:text-base flex items-center gap-2">
+                <Key size={16} className="inline" />
                 Enter OTP
               </label>
               <input
                 type="text"
-                className="form-input"
+                className="px-4 py-3 sm:py-3.5 border-2 border-gray-200 rounded-xl text-base sm:text-lg transition-all duration-300 focus:outline-none focus:border-[#1e4359] focus:ring-4 focus:ring-[#1e4359]/10 font-['Fredoka',sans-serif]"
                 placeholder="Enter 6-digit OTP"
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
                 maxLength={6}
                 required
               />
-              <small style={{ color: '#666', fontSize: '0.8rem' }}>
+              <small className="text-gray-600 text-xs sm:text-sm">
                 OTP sent to Aadhaar ending with {aadhaar.slice(-4)}
               </small>
             </div>
 
-            <button 
-              type="submit" 
-              className="btn-primary" 
-              disabled={isLoading || otp.length !== 6}
-            >
-              {isLoading ? 'Verifying...' : 'Verify & Login'}
-            </button>
+            <div className="flex flex-col gap-2">
+              <button 
+                type="submit" 
+                className="bg-gradient-to-r from-[#1e4359] to-[#3f6177] text-white border-none px-4 py-3 sm:py-3.5 rounded-xl text-base sm:text-lg font-semibold cursor-pointer transition-all duration-300 hover:shadow-lg hover:transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none font-['Fredoka',sans-serif]"
+                disabled={isLoading || otp.length !== 6}
+              >
+                {isLoading ? 'Verifying...' : 'Verify & Login'}
+              </button>
+              
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={resendCooldown > 0 || isLoading}
+                className="text-[#1e4359] bg-transparent border-none px-4 py-2 rounded-xl text-sm sm:text-base font-medium cursor-pointer transition-all duration-300 hover:underline disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline font-['Fredoka',sans-serif]"
+              >
+                {resendCooldown > 0 
+                  ? `Resend OTP in ${resendCooldown}s` 
+                  : 'Resend OTP'}
+              </button>
+            </div>
           </form>
         )}
 
-        {/* Guest login removed */}
-
-        <div style={{ marginTop: '1rem', textAlign: 'center' }}>
-          <span>Don't have an account? </span>
-          <Link to="/register" style={{ color: '#1e4359' }}>Register</Link>
+        <div className="mt-4 sm:mt-6 text-center text-sm sm:text-base">
+          <span className="text-gray-600">Don't have an account? </span>
+          <Link to="/register" className="text-[#1e4359] font-medium hover:underline">
+            Register
+          </Link>
         </div>
       </div>
     </div>

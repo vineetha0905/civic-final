@@ -70,19 +70,25 @@ const Register = () => {
   };
 
   return (
-    <div className="login-container">
-      <div className="login-card">
-        <div className="login-header">
-          <h1 className="login-title">{t('register')}</h1>
-          <p className="login-subtitle">Create your account</p>
+    <div className="min-h-screen bg-gradient-to-b from-[#123244] via-[#1e4359] via-[#3f6177] to-[#d8c7bd] flex items-center justify-center px-4 py-8 sm:px-6 sm:py-12">
+      <div className="bg-white/95 backdrop-blur-xl p-6 sm:p-8 md:p-10 rounded-2xl sm:rounded-3xl w-full max-w-md shadow-xl border border-white/30">
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 mb-2">
+            {t('register')}
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600 font-normal">
+            Create your account
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="login-form">
-          <div className="form-group">
-            <label className="form-label">Full Name</label>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 sm:gap-6">
+          <div className="flex flex-col gap-2">
+            <label className="font-medium text-gray-800 text-sm sm:text-base">
+              Full Name
+            </label>
             <input
               type="text"
-              className="form-input"
+              className="px-4 py-3 sm:py-3.5 border-2 border-gray-200 rounded-xl text-base sm:text-lg transition-all duration-300 focus:outline-none focus:border-[#1e4359] focus:ring-4 focus:ring-[#1e4359]/10 font-['Fredoka',sans-serif]"
               placeholder="Your name"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -90,11 +96,13 @@ const Register = () => {
             />
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Aadhaar Number</label>
+          <div className="flex flex-col gap-2">
+            <label className="font-medium text-gray-800 text-sm sm:text-base">
+              Aadhaar Number
+            </label>
             <input
               type="tel"
-              className="form-input"
+              className="px-4 py-3 sm:py-3.5 border-2 border-gray-200 rounded-xl text-base sm:text-lg transition-all duration-300 focus:outline-none focus:border-[#1e4359] focus:ring-4 focus:ring-[#1e4359]/10 font-['Fredoka',sans-serif]"
               placeholder="12-digit Aadhaar"
               value={aadhaarNumber}
               onChange={(e) => setAadhaarNumber(e.target.value.replace(/\D/g, ''))}
@@ -104,11 +112,13 @@ const Register = () => {
             />
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Mobile Number</label>
+          <div className="flex flex-col gap-2">
+            <label className="font-medium text-gray-800 text-sm sm:text-base">
+              Mobile Number
+            </label>
             <input
               type="tel"
-              className="form-input"
+              className="px-4 py-3 sm:py-3.5 border-2 border-gray-200 rounded-xl text-base sm:text-lg transition-all duration-300 focus:outline-none focus:border-[#1e4359] focus:ring-4 focus:ring-[#1e4359]/10 font-['Fredoka',sans-serif]"
               placeholder="10-digit mobile"
               value={mobile}
               onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))}
@@ -118,21 +128,31 @@ const Register = () => {
             />
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Address</label>
+          <div className="flex flex-col gap-2">
+            <label className="font-medium text-gray-800 text-sm sm:text-base">
+              Address
+            </label>
             <textarea
-              className="form-input"
+              className="px-4 py-3 sm:py-3.5 border-2 border-gray-200 rounded-xl text-base sm:text-lg transition-all duration-300 focus:outline-none focus:border-[#1e4359] focus:ring-4 focus:ring-[#1e4359]/10 font-['Fredoka',sans-serif] resize-none"
               placeholder="Your address"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               rows={3}
             />
-            <button type="button" className="btn-secondary" onClick={handleUseMyLocation}>
+            <button 
+              type="button" 
+              className="bg-transparent text-[#1e4359] border-2 border-[#1e4359] px-4 py-2 sm:py-2.5 rounded-xl text-sm sm:text-base font-medium cursor-pointer transition-all duration-300 hover:bg-[#1e4359] hover:text-white font-['Fredoka',sans-serif]"
+              onClick={handleUseMyLocation}
+            >
               Use my location
             </button>
           </div>
 
-          <button type="submit" className="btn-primary" disabled={isSubmitting}>
+          <button 
+            type="submit" 
+            className="bg-gradient-to-r from-[#1e4359] to-[#3f6177] text-white border-none px-4 py-3 sm:py-3.5 rounded-xl text-base sm:text-lg font-semibold cursor-pointer transition-all duration-300 hover:shadow-lg hover:transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none font-['Fredoka',sans-serif]"
+            disabled={isSubmitting}
+          >
             {isSubmitting ? 'Registering...' : 'Register'}
           </button>
         </form>

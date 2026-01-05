@@ -386,66 +386,49 @@ const ReportIssue = ({ user }) => {
   };
 
   return (
-    <div className="form-container">
-      <div className="form-card">
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2rem' }}>
+    <div className="min-h-screen max-w-full bg-[#f8fafc] px-4 py-6 sm:px-6 sm:py-8 flex justify-center items-start">
+      <div className="bg-white p-5 sm:p-6 md:p-8 lg:p-10 rounded-2xl sm:rounded-3xl w-full max-w-2xl shadow-lg">
+        <div className="flex items-center mb-6 sm:mb-8">
           <button 
             onClick={() => navigate('/citizen')}
-            style={{ 
-              background: 'none', 
-              border: 'none', 
-              color: '#1e4359', 
-              cursor: 'pointer',
-              marginRight: '1rem'
-            }}
+            className="bg-none border-none text-[#1e4359] cursor-pointer mr-3 sm:mr-4 p-1 hover:opacity-70 transition-opacity"
           >
             <ArrowLeft size={20} />
           </button>
-          <h1 className="form-title">{t('reportIssue')}</h1>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800">
+            {t('reportIssue')}
+          </h1>
         </div>
 
         {/* Evidence Capture Section */}
-        <div style={{ marginBottom: '2rem' }}>
-          <h3 style={{ 
-            fontSize: '1.1rem', 
-            fontWeight: '600', 
-            color: '#1e293b', 
-            marginBottom: '1rem' 
-          }}>
+        <div className="mb-6 sm:mb-8">
+          <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4">
             Capture Evidence
           </h3>
           
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(1, 1fr)', 
-            gap: '1rem',
-            marginBottom: '1rem'
-          }}>
+          <div className="grid grid-cols-1 gap-4 mb-4">
             <button
               type="button"
-              className={`btn-secondary ${recordingType === 'photo' ? 'selected' : ''}`}
               onClick={() => setRecordingType('photo')}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '1rem',
-                background: recordingType === 'photo' ? '#1e4359' : 'transparent',
-                color: recordingType === 'photo' ? 'white' : '#1e4359'
-              }}
+              className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-300 ${
+                recordingType === 'photo' 
+                  ? 'bg-[#1e4359] text-white border-[#1e4359]' 
+                  : 'bg-transparent text-[#1e4359] border-[#1e4359] hover:bg-[#1e4359]/10'
+              }`}
             >
               <Camera size={20} />
-              <span>Photo</span>
+              <span className="font-medium">Photo</span>
             </button>
-
-            
           </div>
 
           {/* File Upload for Photo */}
           {recordingType === 'photo' && (
             <div 
-              className={`image-upload ${selectedFile ? 'has-image' : ''}`}
+              className={`border-2 border-dashed rounded-xl p-6 sm:p-8 text-center cursor-pointer transition-all duration-300 ${
+                selectedFile 
+                  ? 'border-[#1e4359] border-solid bg-[#1e4359]/5' 
+                  : 'border-gray-300 hover:border-[#1e4359] hover:bg-[#1e4359]/5'
+              }`}
               onClick={() => document.getElementById('fileInput').click()}
             >
               <input
@@ -453,33 +436,27 @@ const ReportIssue = ({ user }) => {
                 type="file"
                 accept="image/*"
                 onChange={handleFileUpload}
-                style={{ display: 'none' }}
+                className="hidden"
               />
               
               {selectedFile ? (
-                <div style={{ position: 'relative' }}>
+                <div className="relative">
                   <img 
                     src={URL.createObjectURL(selectedFile)} 
                     alt="Preview"
-                    className="uploaded-image"
+                    className="w-full max-w-xs h-auto rounded-lg mx-auto mt-2"
                   />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
-                    <p className="upload-text">Click to change image</p>
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mt-3">
+                    <p className="text-gray-600 font-medium text-sm sm:text-base">
+                      Click to change image
+                    </p>
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleRemoveImage();
                       }}
-                      style={{
-                        background: '#dc2626',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        padding: '0.25rem 0.5rem',
-                        fontSize: '0.75rem',
-                        cursor: 'pointer'
-                      }}
+                      className="bg-red-600 hover:bg-red-700 text-white border-none rounded px-3 py-1.5 text-xs sm:text-sm cursor-pointer transition-colors"
                     >
                       Remove
                     </button>
@@ -487,91 +464,85 @@ const ReportIssue = ({ user }) => {
                 </div>
               ) : (
                 <div>
-                  <Camera className="upload-icon" />
-                  <p className="upload-text">Click to take photo or upload image</p>
+                  <Camera className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 text-gray-400" />
+                  <p className="text-gray-600 font-medium text-sm sm:text-base">
+                    Click to take photo or upload image
+                  </p>
                 </div>
               )}
             </div>
           )}
-
-          {/* Voice panel removed as requested; mic remains near Description */}
         </div>
 
-        <form onSubmit={handleSubmit} className="login-form">
-          <div className="form-group">
-            <label className="form-label">Issue Title</label>
-            <div className="form-row-inline" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5 sm:gap-6">
+          <div className="flex flex-col gap-2">
+            <label className="font-medium text-gray-800 text-sm sm:text-base">
+              Issue Title
+            </label>
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-center">
               <input
                 type="text"
-                className="form-input"
+                className="flex-1 px-4 py-3 sm:py-3.5 border-2 border-gray-200 rounded-xl text-base sm:text-lg transition-all duration-300 focus:outline-none focus:border-[#1e4359] focus:ring-4 focus:ring-[#1e4359]/10 font-['Fredoka',sans-serif]"
                 placeholder="Brief title for the issue"
                 value={reportData.title}
                 onChange={(e) => setReportData(prev => ({...prev, title: e.target.value}))}
                 required
-                style={{ flex: 1 }}
               />
               <button
                 type="button"
-                className="btn-secondary"
+                className="bg-transparent text-[#1e4359] border-2 border-[#1e4359] px-4 py-3 sm:py-3.5 rounded-xl text-sm sm:text-base font-medium cursor-pointer transition-all duration-300 hover:bg-[#1e4359] hover:text-white font-['Fredoka',sans-serif] min-w-[120px] flex items-center justify-center"
                 onClick={() => {
                   targetRef.current = 'title';
                   toggleListening();
                 }}
                 title="Dictate title with your voice"
-                style={{ minWidth: '120px' }}
               >
                 {isListening && targetRef.current === 'title' ? 'Stop' : 'Speak'}
               </button>
             </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Description</label>
-            <div className="form-row-inline" style={{ display: 'flex', gap: '0.5rem', alignItems: 'start' }}>
+          <div className="flex flex-col gap-2">
+            <label className="font-medium text-gray-800 text-sm sm:text-base">
+              Description
+            </label>
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-start">
               <textarea
-                className="form-input"
+                className="flex-1 px-4 py-3 sm:py-3.5 border-2 border-gray-200 rounded-xl text-base sm:text-lg transition-all duration-300 focus:outline-none focus:border-[#1e4359] focus:ring-4 focus:ring-[#1e4359]/10 font-['Fredoka',sans-serif] resize-none"
                 rows="4"
                 placeholder="Describe the issue in detail or use the mic to dictate"
                 value={reportData.description}
                 onChange={(e) => setReportData(prev => ({...prev, description: e.target.value}))}
                 required
-                style={{ flex: 1 }}
               />
               <button
                 type="button"
-                className="btn-secondary"
+                className="bg-transparent text-[#1e4359] border-2 border-[#1e4359] px-4 py-3 sm:py-3.5 rounded-xl text-sm sm:text-base font-medium cursor-pointer transition-all duration-300 hover:bg-[#1e4359] hover:text-white font-['Fredoka',sans-serif] min-w-[120px] flex items-center justify-center"
                 onClick={() => { targetRef.current = 'description'; toggleListening(); }}
                 title="Dictate with your voice"
-                style={{ minWidth: '120px' }}
               >
                 {isListening ? 'Stop' : 'Speak'}
               </button>
             </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Location</label>
-            <div className="form-row-inline" style={{ display: 'flex', gap: '1rem', alignItems: 'end' }}>
+          <div className="flex flex-col gap-2">
+            <label className="font-medium text-gray-800 text-sm sm:text-base">
+              Location
+            </label>
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-stretch sm:items-end">
               <input
                 type="text"
-                className="form-input"
+                className="flex-1 px-4 py-3 sm:py-3.5 border-2 border-gray-200 rounded-xl text-base sm:text-lg transition-all duration-300 focus:outline-none focus:border-[#1e4359] focus:ring-4 focus:ring-[#1e4359]/10 font-['Fredoka',sans-serif]"
                 placeholder="Enter location or use GPS"
                 value={reportData.location}
                 onChange={(e) => setReportData(prev => ({...prev, location: e.target.value}))}
                 required
-                style={{ flex: 1 }}
               />
               <button
                 type="button"
                 onClick={handleGetLocation}
-                className="btn-secondary"
-                style={{ 
-                  padding: '1rem',
-                  minWidth: 'auto',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}
+                className="bg-transparent text-[#1e4359] border-2 border-[#1e4359] px-4 py-3 sm:py-4 rounded-xl text-sm sm:text-base font-medium cursor-pointer transition-all duration-300 hover:bg-[#1e4359] hover:text-white font-['Fredoka',sans-serif] flex items-center justify-center gap-2 min-w-[100px]"
               >
                 <MapPin size={16} />
                 GPS
@@ -581,7 +552,7 @@ const ReportIssue = ({ user }) => {
 
           <button 
             type="submit" 
-            className="btn-primary" 
+            className="bg-gradient-to-r from-[#1e4359] to-[#3f6177] text-white border-none px-4 py-3 sm:py-3.5 rounded-xl text-base sm:text-lg font-semibold cursor-pointer transition-all duration-300 hover:shadow-lg hover:transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none font-['Fredoka',sans-serif]"
             disabled={isSubmitting}
           >
             {isSubmitting ? 'Submitting...' : 'Submit Report'}

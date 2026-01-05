@@ -412,127 +412,132 @@ const EmployeeDashboard = ({ user, setUser }) => {
                     key={issue._id || issue.id}
                     className="bg-white rounded-xl p-5 shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
                   >
-                    <div className="flex justify-between items-start mb-3 gap-2">
-                      <h3 className="text-lg font-semibold text-gray-900 flex-1">
-                        {issue.title}
-                      </h3>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {getStatusBadge(issue.status)}
-                      </div>
-                    </div>
-
-                    <div className="text-sm text-gray-500 mb-2 flex flex-wrap gap-2 items-center">
-                      {lat && lng && (
-                        <>
-                          <span className="flex items-center gap-1">
-                            <MapPin size={14} />
-                            Lat: {lat.toFixed(4)}, Lng: {lng.toFixed(4)}
-                          </span>
-                          <span>•</span>
-                        </>
+                    <div className={`flex ${imageUrl ? 'flex-col sm:flex-row' : ''} gap-4`}>
+                      {imageUrl && (
+                        <div className="flex-shrink-0 w-full sm:w-auto">
+                          <div className="rounded-lg overflow-hidden h-32 sm:h-36 w-full sm:w-[350px] sm:max-w-[400px] bg-gray-100 shadow-sm">
+                            <img
+                              src={imageUrl}
+                              alt={issue.title || 'Issue image'}
+                              className="w-full h-full object-cover"
+                              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                            />
+                          </div>
+                        </div>
                       )}
-                      <span>{formatDate(issue.createdAt || issue.timestamp)} - Category: {issue.category || 'General'}</span>
-                    </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start mb-3 gap-2">
+                          <h3 className="text-lg font-semibold text-gray-900 flex-1">
+                            {issue.title}
+                          </h3>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {getStatusBadge(issue.status)}
+                          </div>
+                        </div>
 
-                    <p className="text-gray-600 text-sm mb-3 leading-relaxed">
-                      {issue.description}
-                    </p>
+                        <div className="text-sm text-gray-500 mb-2 flex flex-wrap gap-2 items-center">
+                          {lat && lng && (
+                            <>
+                              <span className="flex items-center gap-1">
+                                <MapPin size={14} />
+                                Lat: {lat.toFixed(4)}, Lng: {lng.toFixed(4)}
+                              </span>
+                              <span>•</span>
+                            </>
+                          )}
+                          <span>{formatDate(issue.createdAt || issue.timestamp)} - Category: {issue.category || 'General'}</span>
+                        </div>
 
-                    {issue.status === 'in-progress' && issue.acceptedBy && (
-                      (() => {
-                        const acceptedById = typeof issue.acceptedBy === 'object' 
-                          ? (issue.acceptedBy._id?.toString() || issue.acceptedBy.toString())
-                          : issue.acceptedBy.toString();
-                        const currentUserId = (user?.id || user?._id)?.toString();
-                        if (acceptedById !== currentUserId) {
-                          return (
-                            <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                              <p className="text-sm text-yellow-800">
-                                <strong>Accepted by another employee</strong>
-                              </p>
-                            </div>
-                          );
-                        }
-                        return null;
-                      })()
-                    )}
+                        <p className="text-gray-600 text-sm mb-3 leading-relaxed">
+                          {issue.description}
+                        </p>
 
-                    {imageUrl && (
-                      <div className="mb-3 rounded-lg overflow-hidden h-48 w-full bg-gray-100">
-                        <img
-                          src={imageUrl}
-                          alt={issue.title || 'Issue image'}
-                          className="w-full h-full object-cover"
-                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                        />
-                      </div>
-                    )}
-
-                    <div className="flex gap-2 justify-end flex-wrap">
-                      {lat && lng && (
-                        <button
-                          className="px-3.5 py-2 bg-gray-100 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors flex items-center gap-1.5"
-                          onClick={() => openMaps(lat, lng)}
-                        >
-                          <ExternalLink size={16} />
-                          Navigate
-                        </button>
-                      )}
-                      <button
-                        className="px-3.5 py-2 bg-gray-100 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors flex items-center gap-1.5"
-                        onClick={() => navigate(`/issue/${issue._id || issue.id}`)}
-                      >
-                        View Details
-                      </button>
-                      {/* Accept Button - Show for OPEN or ASSIGNED status when not yet accepted */}
-                      {(issue.status === 'reported' || issue.status === 'assigned') && !issue.acceptedBy && (
-                        <button
-                          className="px-4 py-2.5 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors flex items-center gap-2 shadow-sm"
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            try {
-                              await apiService.acceptIssue(issue._id || issue.id);
-                              toast.success('Issue accepted successfully');
-                              fetchIssues();
-                            } catch (error) {
-                              const errorMessage = error?.message || error?.error || error?.response?.data?.message || 'Failed to accept issue';
-                              toast.error(errorMessage);
-                              fetchIssues();
+                        {issue.status === 'in-progress' && issue.acceptedBy && (
+                          (() => {
+                            const acceptedById = typeof issue.acceptedBy === 'object' 
+                              ? (issue.acceptedBy._id?.toString() || issue.acceptedBy.toString())
+                              : issue.acceptedBy.toString();
+                            const currentUserId = (user?.id || user?._id)?.toString();
+                            if (acceptedById !== currentUserId) {
+                              return (
+                                <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                  <p className="text-sm text-yellow-800">
+                                    <strong>Accepted by another employee</strong>
+                                  </p>
+                                </div>
+                              );
                             }
-                          }}
-                        >
-                          <CheckCircle size={18} />
-                          Accept Issue
-                        </button>
-                      )}
-                      
-                      {/* Resolve Button - Show for IN_PROGRESS status if current user accepted it */}
-                      {issue.status === 'in-progress' && issue.acceptedBy && (
-                        (() => {
-                          // Handle both populated object and ID string
-                          const acceptedById = typeof issue.acceptedBy === 'object' 
-                            ? (issue.acceptedBy._id?.toString() || issue.acceptedBy.toString())
-                            : issue.acceptedBy.toString();
-                          const currentUserId = (user?.id || user?._id)?.toString();
+                            return null;
+                          })()
+                        )}
+
+                        <div className="flex gap-2 justify-end flex-wrap">
+                          {lat && lng && (
+                            <button
+                              className="px-3.5 py-2 bg-gray-100 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors flex items-center gap-1.5"
+                              onClick={() => openMaps(lat, lng)}
+                            >
+                              <ExternalLink size={16} />
+                              Navigate
+                            </button>
+                          )}
+                          <button
+                            className="px-3.5 py-2 bg-gray-100 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors flex items-center gap-1.5"
+                            onClick={() => navigate(`/issue/${issue._id || issue.id}`)}
+                          >
+                            View Details
+                          </button>
+                          {/* Accept Button - Show for OPEN or ASSIGNED status when not yet accepted */}
+                          {(issue.status === 'reported' || issue.status === 'assigned') && !issue.acceptedBy && (
+                            <button
+                              className="px-4 py-2.5 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors flex items-center gap-2 shadow-sm"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                  await apiService.acceptIssue(issue._id || issue.id);
+                                  toast.success('Issue accepted successfully');
+                                  fetchIssues();
+                                } catch (error) {
+                                  const errorMessage = error?.message || error?.error || error?.response?.data?.message || 'Failed to accept issue';
+                                  toast.error(errorMessage);
+                                  fetchIssues();
+                                }
+                              }}
+                            >
+                              <CheckCircle size={18} />
+                              Accept Issue
+                            </button>
+                          )}
                           
-                          if (acceptedById === currentUserId) {
-                            return (
-                              <button
-                                className="px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/employee/resolve/${issue._id || issue.id}`);
-                                }}
-                              >
-                                <CheckCircle size={18} />
-                                Resolve Issue
-                              </button>
-                            );
-                          }
-                          return null;
-                        })()
-                      )}
-                      
+                          {/* Resolve Button - Show for IN_PROGRESS status if current user accepted it */}
+                          {issue.status === 'in-progress' && issue.acceptedBy && (
+                            (() => {
+                              // Handle both populated object and ID string
+                              const acceptedById = typeof issue.acceptedBy === 'object' 
+                                ? (issue.acceptedBy._id?.toString() || issue.acceptedBy.toString())
+                                : issue.acceptedBy.toString();
+                              const currentUserId = (user?.id || user?._id)?.toString();
+                              
+                              if (acceptedById === currentUserId) {
+                                return (
+                                  <button
+                                    className="px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/employee/resolve/${issue._id || issue.id}`);
+                                    }}
+                                  >
+                                    <CheckCircle size={18} />
+                                    Resolve Issue
+                                  </button>
+                                );
+                              }
+                              return null;
+                            })()
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );

@@ -506,6 +506,43 @@ body {
   box-shadow: 0 8px 25px rgba(0,0,0,0.12);
 }
 
+/* Desktop-only styles for Recent Issues cards */
+@media (min-width: 769px) {
+  .recent-issue-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .recent-issue-image-container {
+    width: 100%;
+    flex-shrink: 0;
+  }
+
+  .recent-issue-image {
+    width: 100%;
+    height: 200px;
+  }
+
+  .recent-issue-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .recent-issue-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .issues-grid {
+    align-items: stretch;
+  }
+}
+
 .issue-image {
   width: 100%;
   height: 150px;

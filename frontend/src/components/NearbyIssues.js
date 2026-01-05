@@ -408,73 +408,79 @@ const NearbyIssues = ({ user }) => {
                   className="bg-white rounded-xl p-5 shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
                   onClick={() => navigate(`/issue/${issue.id}`)}
                 >
-                  <div className="flex justify-between items-start mb-3 gap-2">
-                    <h3 className="text-lg font-semibold text-gray-900 flex-1">
-                      {issue.title}
-                    </h3>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {getStatusBadge(issue.status)}
-                      {getPriorityBadge(issue.priority)}
-                    </div>
-                  </div>
-
-                  <div className="text-sm text-gray-500 mb-2 flex flex-wrap gap-2 items-center">
-                    {lat && lng && (
-                      <span>Lat: {lat.toFixed(4)}, Lng: {lng.toFixed(4)}</span>
-                    )}
-                    <span>•</span>
-                    <span>{formatDate(issue.timestamp)} - Category: {issue.category || 'General'}</span>
-                  </div>
-
-                  <p className="text-gray-600 text-sm mb-3 leading-relaxed">
-                    {issue.description}
-                  </p>
-
-                  {imageUrl && (
-                    <div className="mb-3 rounded-lg overflow-hidden h-48 w-full bg-gray-100">
-                      <img
-                        src={imageUrl}
-                        alt={issue.title || 'Issue image'}
-                        className="w-full h-full object-cover"
-                        onClick={(e) => { e.stopPropagation(); setPreviewUrl(imageUrl); }}
-                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                      />
-                    </div>
-                  )}
-
-                  <div className="flex gap-2 justify-end flex-wrap">
+                  <div className={`flex ${imageUrl ? 'flex-col sm:flex-row' : ''} gap-4`}>
                     {imageUrl && (
-                      <button
-                        className="px-3.5 py-2 bg-gray-100 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors flex items-center gap-1.5"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPreviewUrl(imageUrl);
-                        }}
-                      >
-                        View Image
-                      </button>
+                      <div className="flex-shrink-0 w-full sm:w-auto">
+                        <div className="rounded-lg overflow-hidden h-32 sm:h-36 w-full sm:w-[350px] sm:max-w-[400px] bg-gray-100 shadow-sm">
+                          <img
+                            src={imageUrl}
+                            alt={issue.title || 'Issue image'}
+                            className="w-full h-full object-cover"
+                            onClick={(e) => { e.stopPropagation(); setPreviewUrl(imageUrl); }}
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                          />
+                        </div>
+                      </div>
                     )}
-                    <button
-                      className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                        upvotedIssues.has(issue.id)
-                          ? 'bg-blue-600 text-white hover:bg-blue-700'
-                          : 'bg-gray-100 border border-gray-300 text-gray-700 hover:bg-gray-200'
-                      }`}
-                      onClick={(e) => handleUpvote(issue.id, e)}
-                    >
-                      <ThumbsUp size={16} />
-                      {issue.upvotes + (upvotedIssues.has(issue.id) ? 1 : 0)}
-                    </button>
-                    <button
-                      className="px-3.5 py-2 bg-gray-100 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors flex items-center gap-1.5"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toast.info('Comment functionality coming soon!');
-                      }}
-                    >
-                      <MessageCircle size={16} />
-                      Comment
-                    </button>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start mb-3 gap-2">
+                        <h3 className="text-lg font-semibold text-gray-900 flex-1">
+                          {issue.title}
+                        </h3>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {getStatusBadge(issue.status)}
+                          {getPriorityBadge(issue.priority)}
+                        </div>
+                      </div>
+
+                      <div className="text-sm text-gray-500 mb-2 flex flex-wrap gap-2 items-center">
+                        {lat && lng && (
+                          <span>Lat: {lat.toFixed(4)}, Lng: {lng.toFixed(4)}</span>
+                        )}
+                        <span>•</span>
+                        <span>{formatDate(issue.timestamp)} - Category: {issue.category || 'General'}</span>
+                      </div>
+
+                      <p className="text-gray-600 text-sm mb-3 leading-relaxed">
+                        {issue.description}
+                      </p>
+
+                      <div className="flex gap-2 justify-end flex-wrap">
+                        {imageUrl && (
+                          <button
+                            className="px-3.5 py-2 bg-gray-100 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors flex items-center gap-1.5"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPreviewUrl(imageUrl);
+                            }}
+                          >
+                            View Image
+                          </button>
+                        )}
+                        <button
+                          className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                            upvotedIssues.has(issue.id)
+                              ? 'bg-blue-600 text-white hover:bg-blue-700'
+                              : 'bg-gray-100 border border-gray-300 text-gray-700 hover:bg-gray-200'
+                          }`}
+                          onClick={(e) => handleUpvote(issue.id, e)}
+                        >
+                          <ThumbsUp size={16} />
+                          {issue.upvotes + (upvotedIssues.has(issue.id) ? 1 : 0)}
+                        </button>
+                        <button
+                          className="px-3.5 py-2 bg-gray-100 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors flex items-center gap-1.5"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toast.info('Comment functionality coming soon!');
+                          }}
+                        >
+                          <MessageCircle size={16} />
+                          Comment
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               );

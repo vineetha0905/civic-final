@@ -61,14 +61,18 @@ const MyReports = ({ user }) => {
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      'reported': { class: 'status-reported', text: 'Reported' },
-      'in-progress': { class: 'status-in-progress', text: 'In Progress' },
-      'resolved': { class: 'status-resolved', text: 'Resolved' },
-      'closed': { class: 'status-closed', text: 'Closed' }
+      'reported': { bg: 'bg-yellow-50', text: 'text-yellow-700', label: 'Reported' },
+      'in-progress': { bg: 'bg-blue-50', text: 'text-blue-700', label: 'In Progress' },
+      'resolved': { bg: 'bg-green-50', text: 'text-green-700', label: 'Resolved' },
+      'closed': { bg: 'bg-gray-50', text: 'text-gray-700', label: 'Closed' }
     };
     
     const config = statusConfig[status] || statusConfig['reported'];
-    return <span className={`status-badge ${config.class}`}>{config.text}</span>;
+    return (
+      <span className={`${config.bg} ${config.text} px-2.5 py-1 rounded-full text-xs font-medium uppercase tracking-wide`}>
+        {config.label}
+      </span>
+    );
   };
 
   const formatDate = (dateString) => {
@@ -92,288 +96,175 @@ const MyReports = ({ user }) => {
   };
 
   return (
-    <div className="form-container">
-      <div className="form-card" style={{ maxWidth: '800px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2rem' }}>
+    <div className="min-h-screen max-w-full bg-[#f8fafc] px-4 py-6 sm:px-6 sm:py-8 flex justify-center items-start">
+      <div className="bg-white p-5 sm:p-6 md:p-8 lg:p-10 rounded-2xl sm:rounded-3xl w-full max-w-4xl shadow-lg">
+        <div className="flex items-center mb-6 sm:mb-8">
           <button 
             onClick={() => navigate('/citizen')}
-            style={{ 
-              background: 'none', 
-              border: 'none', 
-              color: '#1e4359', 
-              cursor: 'pointer',
-              marginRight: '1rem'
-            }}
+            className="bg-none border-none text-[#1e4359] cursor-pointer mr-3 sm:mr-4 p-1 hover:opacity-70 transition-opacity"
           >
             <ArrowLeft size={20} />
           </button>
-          <h1 className="form-title">{t('myReports')}</h1>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800">
+            {t('myReports')}
+          </h1>
         </div>
 
         {userIssues.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
-            <div style={{ 
-              fontSize: '3rem', 
-              marginBottom: '1rem',
-              opacity: 0.5
-            }}>📋</div>
-            <h3 style={{ 
-              color: '#64748b', 
-              marginBottom: '0.5rem',
-              fontWeight: '500'
-            }}>
+          <div className="text-center py-12 sm:py-16 px-4">
+            <div className="text-5xl sm:text-6xl mb-4 opacity-50">📋</div>
+            <h3 className="text-gray-600 mb-2 font-medium text-lg sm:text-xl">
               No Reports Yet
             </h3>
-            <p style={{ color: '#94a3b8', marginBottom: '1.5rem' }}>
+            <p className="text-gray-400 mb-6 sm:mb-8 text-sm sm:text-base">
               You haven't reported any issues yet. Start by reporting your first issue!
             </p>
             <button 
-              className="btn-primary" 
+              className="bg-gradient-to-r from-[#1e4359] to-[#3f6177] text-white border-none px-6 py-3 sm:px-8 sm:py-4 rounded-xl text-base sm:text-lg font-semibold cursor-pointer transition-all duration-300 hover:shadow-lg hover:transform hover:-translate-y-0.5 font-['Fredoka',sans-serif]"
               onClick={() => navigate('/report-issue')}
             >
               Report Your First Issue
             </button>
           </div>
         ) : (
-          <div className="issues-grid" style={{ gridTemplateColumns: '1fr' }}>
+          <div className="grid grid-cols-1 gap-4 sm:gap-6">
             {userIssues.map((issue) => (
               <div 
                 key={issue._id || issue.id} 
-                className="issue-card"
+                className="bg-white rounded-2xl p-4 sm:p-5 md:p-6 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-all duration-300"
                 onClick={() => navigate(`/issue/${issue._id || issue.id}`)}
               >
                 {(() => {
                   const imageUrl = getImageUrl(issue);
-                  return imageUrl ? (
-                  <div>
-                    <div 
-                      className="issue-image"
-                      style={{ 
-                        background: '#f8fafc', 
-                        borderRadius: '8px', 
-                        overflow: 'hidden',
-                        height: '180px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      <img 
-                        src={imageUrl}
-                        alt={issue.title || 'Issue image'}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                        onClick={(e) => { e.stopPropagation(); setPreviewUrl(imageUrl); }}
-                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                      />
+                  return (
+                    <div className={`flex ${imageUrl ? 'flex-col sm:flex-row' : ''} gap-4`}>
+                      {imageUrl && (
+                        <div className="flex-shrink-0 w-full sm:w-auto">
+                          <div className="bg-gray-50 rounded-lg overflow-hidden h-32 sm:h-36 w-full sm:w-[350px] sm:max-w-[400px] shadow-sm">
+                            <img 
+                              src={imageUrl}
+                              alt={issue.title || 'Issue image'}
+                              className="w-full h-full object-cover block"
+                              onClick={(e) => { e.stopPropagation(); setPreviewUrl(imageUrl); }}
+                              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                            />
+                          </div>
+                          <div className="flex justify-end mt-2">
+                            <button 
+                              className="bg-transparent text-[#1e4359] border-2 border-[#1e4359] px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all duration-300 hover:bg-[#1e4359] hover:text-white"
+                              onClick={(e) => { e.stopPropagation(); setPreviewUrl(imageUrl); }}
+                            >
+                              View Image
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start mb-4 gap-3">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">
+                              {issue.title}
+                            </h3>
+                            <div className="text-xs sm:text-sm text-gray-600 flex items-center gap-1 mb-1">
+                              <MapPin size={12} className="inline" />
+                              {issue.location?.name || 'Location not specified'}
+                            </div>
+                            <div className="text-xs text-gray-400 flex items-center gap-2">
+                              <Calendar size={12} />
+                              {formatDate(issue.createdAt || issue.timestamp)} • {getTimeSince(issue.createdAt || issue.timestamp)}
+                            </div>
+                          </div>
+                          {getStatusBadge(issue.status)}
+                        </div>
+
+                        <div className="text-gray-600 text-sm sm:text-base mb-4 leading-relaxed">
+                          {issue.description}
+                        </div>
+
+                        {issue.status === 'resolved' && issue.resolved?.photo?.url && (
+                          <div className="mb-4">
+                            <div className="text-xs sm:text-sm text-green-600 mb-2 font-semibold">
+                              ✓ Resolved with photo proof
+                            </div>
+                            <div className="h-28 sm:h-32 rounded-lg overflow-hidden bg-gray-50">
+                              <img 
+                                src={issue.resolved.photo.url} 
+                                alt="Resolution proof" 
+                                className="w-full h-full object-cover" 
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 pt-4 border-t border-gray-100">
+                          <div className="text-xs sm:text-sm text-gray-600 bg-gray-50 px-3 py-1.5 rounded-full inline-block w-fit">
+                            {issue.category}
+                          </div>
+
+                          <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+                            <ThumbsUp size={14} />
+                            {issue.upvotedBy?.length || 0} upvotes
+                          </div>
+                        </div>
+
+                        {/* Progress Timeline for In-Progress Items */}
+                        {issue.status === 'in-progress' && (
+                          <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <h4 className="text-sm sm:text-base font-semibold mb-3 text-gray-800">
+                              Progress Timeline
+                            </h4>
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-green-500" />
+                                <span className="text-green-600">Reported</span>
+                              </div>
+                              <div className="w-4 sm:w-5 h-0.5 bg-green-500" />
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-blue-500" />
+                                <span className="text-blue-600">In Progress</span>
+                              </div>
+                              <div className="w-4 sm:w-5 h-0.5 bg-gray-300" />
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-gray-300" />
+                                <span className="text-gray-400">Resolved</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Resolution Confirmation for Resolved Items */}
+                        {issue.status === 'resolved' && (
+                          <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                            <h4 className="text-sm sm:text-base font-semibold mb-2 text-green-800">
+                              ✅ Issue Resolved!
+                            </h4>
+                            <p className="text-xs sm:text-sm text-green-700 mb-4">
+                              This issue has been marked as resolved. You can acknowledge and close it when you're satisfied.
+                            </p>
+                            <button 
+                              className="bg-gradient-to-r from-[#1e4359] to-[#3f6177] text-white border-none px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold cursor-pointer transition-all duration-300 hover:shadow-md hover:transform hover:-translate-y-0.5 font-['Fredoka',sans-serif]"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (window.confirm('Are you satisfied with the resolution? This will close the issue.')) {
+                                  try {
+                                    await apiService.closeIssue(issue._id || issue.id);
+                                    fetchUserIssues(); // Refresh the list
+                                  } catch (error) {
+                                    console.error('Error closing issue:', error);
+                                    alert('Failed to close issue. Please try again.');
+                                  }
+                                }
+                              }}
+                            >
+                              Acknowledge & Close Issue
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
-                      <button 
-                        className="btn-secondary"
-                        style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
-                        onClick={(e) => { e.stopPropagation(); setPreviewUrl(imageUrl); }}
-                      >
-                        View Image
-                      </button>
-                    </div>
-                  </div>
-                  ) : null;
+                  );
                 })()}
-                
-                <div className="issue-header">
-                  <div>
-                    <h3 className="issue-title">{issue.title}</h3>
-                    <div className="issue-location">
-                      <MapPin size={12} style={{ display: 'inline', marginRight: '0.3rem' }} />
-                      {issue.location?.name || 'Location not specified'}
-                    </div>
-                    <div style={{ 
-                      fontSize: '0.8rem', 
-                      color: '#94a3b8',
-                      marginTop: '0.3rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.3rem'
-                    }}>
-                      <Calendar size={12} />
-                      {formatDate(issue.createdAt || issue.timestamp)} • {getTimeSince(issue.createdAt || issue.timestamp)}
-                    </div>
-                  </div>
-                  {getStatusBadge(issue.status)}
-                </div>
-
-                <div className="issue-description" style={{ marginBottom: '1rem' }}>
-                  {issue.description}
-                </div>
-
-                {issue.status === 'resolved' && issue.resolved?.photo?.url && (
-                  <div style={{ marginBottom: '1rem' }}>
-                    <div style={{ fontSize: '0.8rem', color: '#059669', marginBottom: '0.5rem', fontWeight: '600' }}>
-                      ✓ Resolved with photo proof
-                    </div>
-                    <div style={{ height: 120, borderRadius: 8, overflow: 'hidden', background: '#f8fafc' }}>
-                      <img 
-                        src={issue.resolved.photo.url} 
-                        alt="Resolution proof" 
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  paddingTop: '1rem',
-                  borderTop: '1px solid #f1f5f9'
-                }}>
-                  <div style={{ 
-                    fontSize: '0.8rem', 
-                    color: '#64748b',
-                    background: '#f8fafc',
-                    padding: '0.3rem 0.8rem',
-                    borderRadius: '12px'
-                  }}>
-                    {issue.category}
-                  </div>
-
-                  <div className="issue-actions">
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      fontSize: '0.8rem',
-                      color: '#64748b'
-                    }}>
-                      <ThumbsUp size={14} />
-                      {issue.upvotedBy?.length || 0} upvotes
-                    </div>
-                  </div>
-                </div>
-
-                {/* Progress Timeline for In-Progress Items */}
-                {issue.status === 'in-progress' && (
-                  <div style={{ 
-                    marginTop: '1rem',
-                    padding: '1rem',
-                    background: '#f8fafc',
-                    borderRadius: '8px',
-                    border: '1px solid #e2e8f0'
-                  }}>
-                    <h4 style={{ 
-                      fontSize: '0.9rem', 
-                      fontWeight: '600', 
-                      marginBottom: '0.8rem',
-                      color: '#1e293b'
-                    }}>
-                      Progress Timeline
-                    </h4>
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center',
-                      gap: '1rem',
-                      fontSize: '0.8rem'
-                    }}>
-                      <div style={{ 
-                        display: 'flex', 
-                        alignItems: 'center',
-                        gap: '0.5rem'
-                      }}>
-                        <div style={{ 
-                          width: '8px', 
-                          height: '8px', 
-                          borderRadius: '50%', 
-                          background: '#10b981' 
-                        }} />
-                        <span style={{ color: '#10b981' }}>Reported</span>
-                      </div>
-                      <div style={{ 
-                        width: '20px', 
-                        height: '2px', 
-                        background: '#10b981' 
-                      }} />
-                      <div style={{ 
-                        display: 'flex', 
-                        alignItems: 'center',
-                        gap: '0.5rem'
-                      }}>
-                        <div style={{ 
-                          width: '8px', 
-                          height: '8px', 
-                          borderRadius: '50%', 
-                          background: '#3b82f6' 
-                        }} />
-                        <span style={{ color: '#3b82f6' }}>In Progress</span>
-                      </div>
-                      <div style={{ 
-                        width: '20px', 
-                        height: '2px', 
-                        background: '#e5e7eb' 
-                      }} />
-                      <div style={{ 
-                        display: 'flex', 
-                        alignItems: 'center',
-                        gap: '0.5rem'
-                      }}>
-                        <div style={{ 
-                          width: '8px', 
-                          height: '8px', 
-                          borderRadius: '50%', 
-                          background: '#e5e7eb' 
-                        }} />
-                        <span style={{ color: '#9ca3af' }}>Resolved</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Resolution Confirmation for Resolved Items */}
-                {issue.status === 'resolved' && (
-                  <div style={{ 
-                    marginTop: '1rem',
-                    padding: '1rem',
-                    background: '#f0fdf4',
-                    borderRadius: '8px',
-                    border: '1px solid #bbf7d0'
-                  }}>
-                    <h4 style={{ 
-                      fontSize: '0.9rem', 
-                      fontWeight: '600', 
-                      marginBottom: '0.8rem',
-                      color: '#15803d'
-                    }}>
-                      ✅ Issue Resolved!
-                    </h4>
-                    <p style={{ 
-                      fontSize: '0.8rem', 
-                      color: '#16a34a',
-                      marginBottom: '1rem'
-                    }}>
-                      This issue has been marked as resolved. You can acknowledge and close it when you're satisfied.
-                    </p>
-                    <button 
-                      className="btn-primary" 
-                      style={{ 
-                        fontSize: '0.8rem',
-                        padding: '0.5rem 1rem'
-                      }}
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        if (window.confirm('Are you satisfied with the resolution? This will close the issue.')) {
-                          try {
-                            await apiService.closeIssue(issue._id || issue.id);
-                            fetchUserIssues(); // Refresh the list
-                          } catch (error) {
-                            console.error('Error closing issue:', error);
-                            alert('Failed to close issue. Please try again.');
-                          }
-                        }
-                      }}
-                    >
-                      Acknowledge & Close Issue
-                    </button>
-                  </div>
-                )}
               </div>
             ))}
           </div>
@@ -382,14 +273,12 @@ const MyReports = ({ user }) => {
       {previewUrl && (
         <div 
           onClick={() => setPreviewUrl('')}
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
-          }}
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-[1000]"
         >
           <img 
             src={previewUrl} 
             alt="Issue"
-            style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: '8px' }}
+            className="max-w-[90vw] max-h-[90vh] rounded-lg"
           />
         </div>
       )}
