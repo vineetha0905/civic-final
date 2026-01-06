@@ -22,7 +22,6 @@ import {
 import IssueMap from './IssueMap';
 import ResolutionCharts from './analytics/ResolutionCharts';
 import apiService from '../services/api';
-import { getIssueImageUrl } from '../utils/imageUtils';
 
 const AdminDashboard = ({ user }) => {
   const navigate = useNavigate();
@@ -74,6 +73,41 @@ const AdminDashboard = ({ user }) => {
     const matchesCategory = categoryFilter === 'all' || (issue.category === categoryFilter);
     return matchesStatus && matchesSearch && matchesCategory;
   });
+
+  // Prepare map issues and calculate center for map view
+  const mapData = useMemo(() => {
+    const mapIssues = filteredIssues
+      .map((iss) => ({
+        id: iss._id || iss.id,
+        title: iss.title,
+        location: iss.location?.name || '',
+        coordinates: iss.location?.coordinates ? [
+          iss.location.coordinates.latitude,
+          iss.location.coordinates.longitude
+        ] : null,
+        status: iss.status,
+        upvotes: iss.upvotedBy?.length || iss.upvotes || 0,
+        description: iss.description
+      }))
+      .filter(i => 
+        Array.isArray(i.coordinates) && 
+        i.coordinates.length === 2 &&
+        typeof i.coordinates[0] === 'number' &&
+        typeof i.coordinates[1] === 'number' &&
+        !isNaN(i.coordinates[0]) &&
+        !isNaN(i.coordinates[1])
+      );
+
+    // Calculate center from issue coordinates if available
+    let mapCenter = null;
+    if (mapIssues.length > 0) {
+      const sumLat = mapIssues.reduce((sum, issue) => sum + issue.coordinates[0], 0);
+      const sumLng = mapIssues.reduce((sum, issue) => sum + issue.coordinates[1], 0);
+      mapCenter = [sumLat / mapIssues.length, sumLng / mapIssues.length];
+    }
+
+    return { mapIssues, mapCenter };
+  }, [filteredIssues]);
 
   const StatCard = ({ title, value, icon: Icon, color, subtitle }) => (
     <div className="stat-card">
@@ -286,95 +320,81 @@ const AdminDashboard = ({ user }) => {
                 {filteredIssues.slice(0, 3).map((issue) => (
                   <div 
                     key={issue._id || issue.id} 
-                    className="issue-card recent-issue-card"
+                    className="issue-card"
                     onClick={() => navigate(`/issue/${issue._id || issue.id}`)}
                   >
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="flex-shrink-0 w-full sm:w-auto">
-                        <div className="rounded-lg overflow-hidden bg-gray-50 shadow-sm h-32 sm:h-36 w-full sm:w-[350px] sm:max-w-[400px]">
-                          <img
-                            alt={issue.title}
-                            src={getIssueImageUrl(issue)}
-                            className="w-full h-full object-cover"
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+                      <div>
+                        <h4 style={{ fontSize: '1.1rem', fontWeight: '600', color: '#1e293b', marginBottom: '0.5rem' }}>
+                          {issue.title}
+                        </h4>
+                        <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '0.3rem' }}>
+                          📍 {issue.location?.name || issue.location}
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                          Reported by: {issue.reportedBy?.name || 'Citizen'}
+                        </div>
+                    {issue.images && issue.images.length > 0 && (
+                      <div style={{ marginBottom: '0.8rem', borderRadius: '8px', overflow: 'hidden', background: '#f8fafc' }}>
+                        <img
+                          alt={issue.title}
+                          src={issue.images[0].url || issue.images[0].secure_url || issue.images[0].secureUrl}
+                          style={{ width: '100%', height: '200px', objectFit: 'cover' }}
+                        />
+                      </div>
+                    )}
+
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'end' }}>
+                        {getStatusBadge(issue.status)}
+                        {getPriorityBadge(issue.priority)}
+                      </div>
+                    </div>
+
+                    <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                      {issue.description}
+                    </p>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                    Assigned to: <strong>{issue.assignedTo?.name || 'Unassigned'}</strong>
+                    {issue.resolved?.photo?.url && (
+                      <div style={{ marginTop: '0.5rem', fontSize: '0.7rem', color: '#059669' }}>
+                        ✓ Resolved with photo proof
+                        <div style={{ marginTop: '0.3rem', height: 60, borderRadius: 4, overflow: 'hidden', background: '#f8fafc' }}>
+                          <img 
+                            src={issue.resolved.photo.url} 
+                            alt="Resolution proof" 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                           />
                         </div>
-                        <div className="flex justify-end mt-2">
-                          <button
-                            className="px-3 py-1.5 bg-gray-100 border border-gray-300 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors"
-                            onClick={(e) => {
+                      </div>
+                    )}
+                  </div>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        {issue.status === 'reported' && (
+                          <button 
+                            className="btn-secondary"
+                            style={{ fontSize: '0.7rem', padding: '0.3rem 0.8rem' }}
+                            onClick={async (e) => {
                               e.stopPropagation();
-                              window.open(getIssueImageUrl(issue), '_blank');
+                              const employeeId = prompt('Enter Employee ID to assign (or leave empty for auto-assign):');
+                              if (employeeId !== null) {
+                                try {
+                                  await apiService.assignIssue(issue._id || issue.id, { assignedTo: employeeId || null });
+                                  toast.success('Issue assigned');
+                                  const fresh = await apiService.getAdminDashboard();
+                                  setStats(fresh.data || fresh);
+                                } catch (err) {
+                                  toast.error(`Assign failed: ${err.message}`);
+                                }
+                              }
                             }}
                           >
-                            View Image
+                            Assign
                           </button>
-                        </div>
-                      </div>
-                      <div className="recent-issue-content flex-1 min-w-0">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
-                          <div>
-                            <h4 style={{ fontSize: '1.1rem', fontWeight: '600', color: '#1e293b', marginBottom: '0.5rem' }}>
-                              {issue.title}
-                            </h4>
-                            <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '0.3rem' }}>
-                              📍 {issue.location?.name || issue.location}
-                            </div>
-                            <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                              Reported by: {issue.reportedBy?.name || 'Citizen'}
-                            </div>
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'end' }}>
-                            {getStatusBadge(issue.status)}
-                            {getPriorityBadge(issue.priority)}
-                          </div>
-                        </div>
-
-                        <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                          {issue.description}
-                        </p>
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                            Assigned to: <strong>{issue.assignedTo?.name || 'Unassigned'}</strong>
-                            {issue.resolved?.photo?.url && (
-                              <div style={{ marginTop: '0.5rem', fontSize: '0.7rem', color: '#059669' }}>
-                                ✓ Resolved with photo proof
-                                <div style={{ marginTop: '0.3rem', height: 60, borderRadius: 4, overflow: 'hidden', background: '#f8fafc' }}>
-                                  <img 
-                                    src={issue.resolved.photo.url} 
-                                    alt="Resolution proof" 
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                                  />
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                          <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            {issue.status === 'reported' && (
-                              <button 
-                                className="btn-secondary"
-                                style={{ fontSize: '0.7rem', padding: '0.3rem 0.8rem' }}
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  const employeeId = prompt('Enter Employee ID to assign (or leave empty for auto-assign):');
-                                  if (employeeId !== null) {
-                                    try {
-                                      await apiService.assignIssue(issue._id || issue.id, { assignedTo: employeeId || null });
-                                      toast.success('Issue assigned');
-                                      const fresh = await apiService.getAdminDashboard();
-                                      setStats(fresh.data || fresh);
-                                    } catch (err) {
-                                      toast.error(`Assign failed: ${err.message}`);
-                                    }
-                                  }
-                                }}
-                              >
-                                Assign
-                              </button>
-                            )}
-                            {/* Admin can only assign issues, not resolve them */}
-                          </div>
-                        </div>
+                        )}
+                        {/* Admin can only assign issues, not resolve them */}
                       </div>
                     </div>
                   </div>
@@ -589,27 +609,31 @@ const AdminDashboard = ({ user }) => {
               marginBottom: '1rem'
             }}>
               <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                📍 Map shows your current location and nearby issues. Click on markers to view details.
+                📍 Map shows all issues with their locations. Click on markers to view details.
+                {mapData.mapIssues.length === 0 && ' No issues with valid coordinates to display.'}
               </p>
             </div>
-            <div style={{ height: '600px' }}>
-              <IssueMap 
-                issues={filteredIssues.map((iss) => ({
-                  id: iss._id || iss.id,
-                  title: iss.title,
-                  location: iss.location?.name || '',
-                  coordinates: iss.location?.coordinates ? [
-                    iss.location.coordinates.latitude,
-                    iss.location.coordinates.longitude
-                  ] : null,
-                  status: iss.status,
-                  upvotes: iss.upvotedBy?.length || iss.upvotes || 0,
-                  description: iss.description
-                })).filter(i => Array.isArray(i.coordinates) && i.coordinates.length === 2)}
-                onMarkerClick={(issue) => navigate(`/issue/${issue.id}`)}
-                showCenterMarker={true}
-              />
-            </div>
+            {mapData.mapIssues.length > 0 ? (
+              <div style={{ height: '600px' }}>
+                <IssueMap 
+                  issues={mapData.mapIssues}
+                  center={mapData.mapCenter}
+                  onMarkerClick={(issue) => navigate(`/issue/${issue.id}`)}
+                  showCenterMarker={false}
+                />
+              </div>
+            ) : (
+              <div style={{ 
+                height: '600px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                background: '#f1f5f9',
+                borderRadius: '8px'
+              }}>
+                <p style={{ color: '#64748b' }}>No issues with valid coordinates to display on map.</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -619,7 +643,7 @@ const AdminDashboard = ({ user }) => {
         {/* Analytics */}
         {selectedView === 'analytics' && (
           <div>
-            <h3 className="text-2xl font-semibold text-gray-800 mb-6">
+            <h3 style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '1.5rem', color: '#1e293b' }}>
               Analytics Dashboard
             </h3>
             

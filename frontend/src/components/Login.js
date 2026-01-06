@@ -8,7 +8,7 @@ import apiService from '../services/api';
 const Login = ({ setUser, setIsAdmin }) => {
   const navigate = useNavigate();
   const { t } = useContext(LanguageContext);
-  const [aadhaar, setAadhaar] = useState('');
+  const [mobile, setMobile] = useState('');
   const [otp, setOtp] = useState('');
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -16,14 +16,14 @@ const Login = ({ setUser, setIsAdmin }) => {
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
-    if (aadhaar.length !== 12) {
-      toast.warning('Please enter a valid 12-digit Aadhaar number');
+    if (mobile.length !== 10) {
+      toast.warning('Please enter a valid 10-digit mobile number');
       return;
     }
 
     setIsLoading(true);
     try {
-      const response = await apiService.sendOtpByAadhaar(aadhaar);
+      const response = await apiService.sendOtpByMobile(mobile);
       setIsOtpSent(true);
       setResendCooldown(10); // Start 60-second cooldown
       
@@ -35,7 +35,7 @@ const Login = ({ setUser, setIsAdmin }) => {
       }
     } catch (error) {
       if (error.message.includes('Please register before proceeding')) {
-        toast.error('This Aadhaar number is not registered. Please register first before logging in.');
+        toast.error('This mobile number is not registered. Please register first before logging in.');
         // Optionally redirect to registration page
         // navigate('/register');
       } else {
@@ -53,7 +53,7 @@ const Login = ({ setUser, setIsAdmin }) => {
 
     setIsLoading(true);
     try {
-      const response = await apiService.sendOtpByAadhaar(aadhaar);
+      const response = await apiService.sendOtpByMobile(mobile);
       setResendCooldown(10); // Start 60-second cooldown
       setOtp(''); // Clear the previous OTP input
       
@@ -89,7 +89,7 @@ const Login = ({ setUser, setIsAdmin }) => {
 
     setIsLoading(true);
     try {
-      const response = await apiService.verifyOtpByAadhaar(aadhaar, otp);
+      const response = await apiService.verifyOtp(mobile, null, otp);
       const user = {
         id: response.data.user._id,
         name: response.data.user.name,
@@ -130,7 +130,7 @@ const Login = ({ setUser, setIsAdmin }) => {
             {t('login')}
           </h1>
           <p className="text-sm sm:text-base text-gray-600 font-normal">
-            Enter your Aadhaar number to continue
+            Enter your mobile number to continue
           </p>
         </div>
 
@@ -139,16 +139,16 @@ const Login = ({ setUser, setIsAdmin }) => {
             <div className="flex flex-col gap-2">
               <label className="font-medium text-gray-800 text-sm sm:text-base flex items-center gap-2">
                 <IdCard size={16} className="inline" />
-                Aadhaar Number
+                Mobile Number
               </label>
               <input
                 type="tel"
                 className="px-4 py-3 sm:py-3.5 border-2 border-gray-200 rounded-xl text-base sm:text-lg transition-all duration-300 focus:outline-none focus:border-[#1e4359] focus:ring-4 focus:ring-[#1e4359]/10 font-['Fredoka',sans-serif]"
-                placeholder="Enter 12-digit Aadhaar number"
-                value={aadhaar}
-                onChange={(e) => setAadhaar(e.target.value.replace(/\D/g, ''))}
-                maxLength={12}
-                pattern="[0-9]{12}"
+                placeholder="Enter 10-digit mobile number"
+                value={mobile}
+                onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))}
+                maxLength={10}
+                pattern="[0-9]{10}"
                 required
               />
             </div>
@@ -156,7 +156,7 @@ const Login = ({ setUser, setIsAdmin }) => {
             <button 
               type="submit" 
               className="bg-gradient-to-r from-[#1e4359] to-[#3f6177] text-white border-none px-4 py-3 sm:py-3.5 rounded-xl text-base sm:text-lg font-semibold cursor-pointer transition-all duration-300 hover:shadow-lg hover:transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none font-['Fredoka',sans-serif]"
-              disabled={isLoading || aadhaar.length !== 12}
+              disabled={isLoading || mobile.length !== 10}
             >
               {isLoading ? 'Sending OTP...' : 'Send OTP'}
             </button>
@@ -178,7 +178,7 @@ const Login = ({ setUser, setIsAdmin }) => {
                 required
               />
               <small className="text-gray-600 text-xs sm:text-sm">
-                OTP sent to Aadhaar ending with {aadhaar.slice(-4)}
+                OTP sent to mobile ending with {mobile.slice(-4)}
               </small>
             </div>
 

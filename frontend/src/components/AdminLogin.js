@@ -17,7 +17,7 @@ const AdminLogin = ({ setUser, setIsAdmin }) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const resp = await apiService.adminLogin(username, password);
+      const resp = await apiService.adminLogin({ username, password });
       const data = resp.data || resp;
       if (!data?.token || !data?.user) {
         throw new Error('Invalid admin login response');

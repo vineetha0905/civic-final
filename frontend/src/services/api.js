@@ -197,10 +197,14 @@ class ApiService {
   }
 
   async verifyOtp(mobile, email, otp) {
+    const body = { otp };
+    if (mobile) body.mobile = mobile;
+    if (email) body.email = email;
+    
     const response = await fetch(`${this.baseURL}/auth/verify-otp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mobile, email, otp })
+      body: JSON.stringify(body)
     });
     return this.handleResponse(response);
   }
@@ -402,6 +406,41 @@ class ApiService {
     return this.handleResponse(response);
   }
 
+  // ================= EMPLOYEE MANAGEMENT =================
+  async getEmployees(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    const response = await fetch(`${this.baseURL}/admin/employees${queryString ? `?${queryString}` : ''}`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  async createEmployee(employeeData) {
+    const response = await fetch(`${this.baseURL}/admin/employees`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(employeeData)
+    });
+    return this.handleResponse(response);
+  }
+
+  async updateEmployee(employeeId, employeeData) {
+    const response = await fetch(`${this.baseURL}/admin/employees/${employeeId}`, {
+      method: 'PUT',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(employeeData)
+    });
+    return this.handleResponse(response);
+  }
+
+  async deleteEmployee(employeeId) {
+    const response = await fetch(`${this.baseURL}/admin/employees/${employeeId}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
   // ================= EMPLOYEE =================
   async getEmployeeIssues(params = {}) {
     const queryString = new URLSearchParams(params).toString();
@@ -438,7 +477,7 @@ class ApiService {
     }
 
     const response = await fetch(`${this.baseURL}/employee/issues/${issueId}/resolve`, {
-      method: 'POST',
+      method: 'PUT',
       headers,
       body: formData
     });

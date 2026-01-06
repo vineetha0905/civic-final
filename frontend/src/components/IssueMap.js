@@ -39,57 +39,121 @@ const MapUpdater = ({ center }) => {
   return null;
 };
 
+// Component to fit bounds to all markers when issues are provided
+const FitBounds = ({ issues }) => {
+  const map = useMap();
+  
+  useEffect(() => {
+    if (issues && issues.length > 0) {
+      const validIssues = issues.filter(issue => 
+        issue.coordinates && 
+        Array.isArray(issue.coordinates) && 
+        issue.coordinates.length === 2 &&
+        typeof issue.coordinates[0] === 'number' &&
+        typeof issue.coordinates[1] === 'number' &&
+        !isNaN(issue.coordinates[0]) &&
+        !isNaN(issue.coordinates[1])
+      );
+      
+      if (validIssues.length > 0) {
+        const bounds = validIssues.map(issue => issue.coordinates);
+        if (bounds.length === 1) {
+          // Single marker: center on it with zoom 13
+          map.setView(bounds[0], 13);
+        } else {
+          // Multiple markers: fit bounds with padding
+          map.fitBounds(bounds, { padding: [50, 50] });
+        }
+      }
+    }
+  }, [issues, map]);
+  
+  return null;
+};
+
 const IssueMap = ({ issues = null, onMarkerClick = null, center = null, showCenterMarker = true }) => {
-  const [mapCenter, setMapCenter] = useState([16.0716, 77.9053]); // Default fallback
+  const [mapCenter, setMapCenter] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [locationError, setLocationError] = useState(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
   
-  // Debug logging
-  console.log('IssueMap received issues:', issues);
-  console.log('IssueMap issues type:', typeof issues);
-  console.log('IssueMap issues length:', issues?.length);
-
-  // Get user's current location
+  // Calculate center from issues if provided and no center is explicitly set
   useEffect(() => {
-    const getCurrentLocation = () => {
-      if (!navigator.geolocation) {
-        setLocationError('Geolocation is not supported by this browser.');
-        setIsLoadingLocation(false);
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          const newLocation = [latitude, longitude];
-          setUserLocation(newLocation);
-          setMapCenter(newLocation);
-          setIsLoadingLocation(false);
-          console.log('User location obtained:', newLocation);
-        },
-        (error) => {
-          console.error('Error getting location:', error);
-          setLocationError('Unable to retrieve your location. Using default location.');
-          setIsLoadingLocation(false);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 300000 // 5 minutes
-        }
-      );
-    };
-
-    // If center is provided, use it; otherwise get user location
-    if (center && Array.isArray(center) && center.length === 2) {
+    if (center && Array.isArray(center) && center.length === 2 && 
+        typeof center[0] === 'number' && typeof center[1] === 'number' &&
+        !isNaN(center[0]) && !isNaN(center[1])) {
+      // Use provided center
       setMapCenter(center);
       setUserLocation(center);
       setIsLoadingLocation(false);
+    } else if (issues && issues.length > 0) {
+      // Calculate center from issues
+      const validIssues = issues.filter(issue => 
+        issue.coordinates && 
+        Array.isArray(issue.coordinates) && 
+        issue.coordinates.length === 2 &&
+        typeof issue.coordinates[0] === 'number' &&
+        typeof issue.coordinates[1] === 'number' &&
+        !isNaN(issue.coordinates[0]) &&
+        !isNaN(issue.coordinates[1])
+      );
+      
+      if (validIssues.length > 0) {
+        // Calculate average center from all issues
+        const sumLat = validIssues.reduce((sum, issue) => sum + issue.coordinates[0], 0);
+        const sumLng = validIssues.reduce((sum, issue) => sum + issue.coordinates[1], 0);
+        const avgCenter = [sumLat / validIssues.length, sumLng / validIssues.length];
+        setMapCenter(avgCenter);
+        setIsLoadingLocation(false);
+      } else {
+        // No valid issue coordinates, try to get user location
+        getCurrentLocation();
+      }
     } else {
+      // No issues and no center, try to get user location
       getCurrentLocation();
     }
-  }, [center]);
+  }, [center, issues]);
+
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation is not supported by this browser.');
+      // Use default fallback only if no issues are available
+      if (!issues || issues.length === 0) {
+        setMapCenter([16.0716, 77.9053]);
+      }
+      setIsLoadingLocation(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const newLocation = [latitude, longitude];
+        setUserLocation(newLocation);
+        // Only set map center from user location if no issues are provided
+        if (!issues || issues.length === 0) {
+          setMapCenter(newLocation);
+        }
+        setIsLoadingLocation(false);
+        console.log('User location obtained:', newLocation);
+      },
+      (error) => {
+        console.error('Error getting location:', error);
+        setLocationError('Unable to retrieve your location.');
+        // Use default fallback only if no issues are available
+        if (!issues || issues.length === 0) {
+          setMapCenter([16.0716, 77.9053]);
+        }
+        setIsLoadingLocation(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000 // 5 minutes
+      }
+    );
+  };
 
   // Generate nearby issues based on user location
   const generateNearbyIssues = (userLoc) => {
@@ -183,6 +247,22 @@ const IssueMap = ({ issues = null, onMarkerClick = null, center = null, showCent
     }
   };
 
+  // Don't render map until we have a valid center
+  if (!mapCenter || mapCenter.length !== 2) {
+    return (
+      <div className="map-container" style={{ 
+        height: '100%', 
+        width: '100%', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        background: '#f1f5f9'
+      }}>
+        <p style={{ color: '#64748b' }}>Loading map...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="map-container">
       <MapContainer
@@ -192,6 +272,7 @@ const IssueMap = ({ issues = null, onMarkerClick = null, center = null, showCent
         style={{ height: '100%', width: '100%' }}
       >
         <MapUpdater center={mapCenter} />
+        <FitBounds issues={displayIssues} />
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'

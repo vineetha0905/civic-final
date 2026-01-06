@@ -367,25 +367,39 @@ class EmployeeController {
       
       // If transitioning to resolved, award points and update status (keep issue visible)
       if (oldStatus !== 'resolved') {
-        // Award points first
-        if (issue.reportedBy && !issue.pointsAwarded) {
+        // Award points first - check if points haven't been awarded yet
+        if (!issue.pointsAwarded && issue.reportedBy) {
           try {
             const User = require('../models/User');
-            const reporter = await User.findById(issue.reportedBy);
+            // Convert to string for comparison if needed
+            const reporterId = issue.reportedBy.toString ? issue.reportedBy.toString() : issue.reportedBy;
+            const reporter = await User.findById(reporterId);
+            
             if (reporter) {
               const currentPoints = reporter.points || 0;
               reporter.points = currentPoints + 10;
               await reporter.save();
               issue.pointsAwarded = true;
-              console.log(`Awarded +10 points to user ${reporter._id} for resolved issue ${issue._id}. New total: ${reporter.points}`);
+              console.log(`✅ Awarded +10 points to user ${reporter._id} (${reporter.name || reporter.mobile}) for resolved issue ${issue._id}. Points: ${currentPoints} → ${reporter.points}`);
+            } else {
+              console.warn(`⚠️ Could not find reporter user with ID: ${reporterId} for issue ${issue._id}`);
             }
           } catch (pointsError) {
-            console.error('Error awarding points:', pointsError);
-            return res.status(500).json({
-              success: false,
-              message: 'Failed to award points',
-              error: pointsError.message
+            console.error('❌ Error awarding points:', pointsError);
+            // Don't fail the resolution if points fail, but log it
+            console.error('Points error details:', {
+              issueId: issue._id,
+              reportedBy: issue.reportedBy,
+              error: pointsError.message,
+              stack: pointsError.stack
             });
+          }
+        } else {
+          if (issue.pointsAwarded) {
+            console.log(`ℹ️ Points already awarded for issue ${issue._id}`);
+          }
+          if (!issue.reportedBy) {
+            console.warn(`⚠️ Issue ${issue._id} has no reportedBy field`);
           }
         }
       }

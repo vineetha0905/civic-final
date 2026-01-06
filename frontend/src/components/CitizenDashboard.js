@@ -337,10 +337,7 @@ const CitizenDashboard = ({ user, setUser }) => {
             <MapPin size={18} className="sm:w-5 sm:h-5" />
             <span className="whitespace-nowrap overflow-hidden text-ellipsis">Map</span>
           </div>
-          <div className="flex flex-col items-center gap-1 text-gray-500 text-xs sm:text-sm font-medium cursor-pointer min-w-0 flex-1 transition-all duration-300 hover:text-[#1e4359] hover:-translate-y-0.5">
-            <Bell size={18} className="sm:w-5 sm:h-5" />
-            <span className="whitespace-nowrap overflow-hidden text-ellipsis">Notifications</span>
-          </div>
+         
           <div 
             className="flex flex-col items-center gap-1 text-gray-500 text-xs sm:text-sm font-medium cursor-pointer min-w-0 flex-1 transition-all duration-300 hover:text-[#1e4359] hover:-translate-y-0.5"
             onClick={() => navigate('/profile')}

@@ -11,7 +11,7 @@ const NearbyIssues = ({ user }) => {
   const navigate = useNavigate();
   const { t } = useContext(LanguageContext);
   const [viewMode, setViewMode] = useState('list');
-  const [selectedStatus, setSelectedStatus] = useState('resolved');
+  const [selectedStatus, setSelectedStatus] = useState('all'); // Default to 'all' to show all issues
   const [upvotedIssues, setUpvotedIssues] = useState(new Set());
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -118,6 +118,8 @@ const NearbyIssues = ({ user }) => {
       if (selectedStatus !== 'all') {
         params.status = selectedStatus;
       }
+      
+      console.log('Fetching issues with params:', params);
       const response = await apiService.getIssues(params);
       const rawIssues = response.data?.issues || response.issues || [];
       const mappedIssues = rawIssues.map(issue => ({
@@ -139,11 +141,15 @@ const NearbyIssues = ({ user }) => {
       setIssues(mappedIssues);
     } catch (error) {
       console.error('Error fetching issues:', error);
+      console.error('Error details:', error.message, error.stack);
+      // Show user-friendly error message
+      toast.error(`Failed to load issues: ${error.message || 'Unknown error'}`);
       setIssues(mockIssues);
     } finally {
       setLoading(false);
     }
   };
+
 
   const mockIssues = [
     {
@@ -200,6 +206,14 @@ const NearbyIssues = ({ user }) => {
   const byStatus = selectedStatus === 'all' ? issues : issues.filter(issue => issue.status === selectedStatus);
   const filteredIssues = filterByRadius(byStatus, radiusKm);
 
+  const statusCounts = {
+    all: filterByRadius(issues, radiusKm).length,
+    reported: filterByRadius(issues.filter(i => i.status === 'reported'), radiusKm).length,
+    'in-progress': filterByRadius(issues.filter(i => i.status === 'in-progress'), radiusKm).length,
+    resolved: filterByRadius(issues.filter(i => i.status === 'resolved'), radiusKm).length
+  };
+
+
   const getStatusBadge = (status) => {
     const statusConfig = {
       'reported': { bg: 'bg-red-50', text: 'text-red-700', label: 'REPORTED' },
@@ -253,13 +267,6 @@ const NearbyIssues = ({ user }) => {
 
   const handleMarkerClick = (issue) => {
     navigate(`/issue/${issue.id}`);
-  };
-
-  const statusCounts = {
-    all: filterByRadius(issues, radiusKm).length,
-    reported: filterByRadius(issues.filter(i => i.status === 'reported'), radiusKm).length,
-    'in-progress': filterByRadius(issues.filter(i => i.status === 'in-progress'), radiusKm).length,
-    resolved: filterByRadius(issues.filter(i => i.status === 'resolved'), radiusKm).length
   };
 
   return (
