@@ -11,6 +11,8 @@ This guide will help you deploy the Civic Connect ML Backend to Render.
 
 ### Option 1: Deploy using render.yaml (Recommended)
 
+**IMPORTANT**: Since `render.yaml` is in the `ml-backend-with-image` subdirectory, you MUST set the Root Directory manually in Render.
+
 1. **Push your code to Git**
    ```bash
    git add .
@@ -21,13 +23,15 @@ This guide will help you deploy the Civic Connect ML Backend to Render.
 2. **Create a new Web Service on Render**
    - Go to https://dashboard.render.com
    - Click "New +" → "Web Service"
-   - Connect your Git repository
-   - Render will automatically detect `render.yaml` and use it
+   - Connect your Git repository: `https://github.com/vineetha0905/civic-connect-1`
+   - **CRITICAL**: Set the **Root Directory** to `ml-backend-with-image`
+   - Render will automatically detect `render.yaml` in that directory
 
-3. **Verify Configuration**
+3. **Verify Configuration** (should auto-populate from render.yaml)
    - Service name: `civic-connect-ml`
+   - Root Directory: `ml-backend-with-image` ⚠️ **MUST BE SET**
    - Environment: `Python 3`
-   - Build Command: `pip install --upgrade pip && pip install python-multipart && pip install -r requirements.txt`
+   - Build Command: `pip install --upgrade pip && pip install -r requirements.txt`
    - Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --timeout-keep-alive 75 --access-log --log-level info`
 
 4. **Deploy**
@@ -35,29 +39,30 @@ This guide will help you deploy the Civic Connect ML Backend to Render.
    - Render will build and deploy your service
    - Wait for deployment to complete (first deployment may take 5-10 minutes)
 
-### Option 2: Manual Configuration
+### Option 2: Manual Configuration (If render.yaml doesn't work)
 
-If you prefer to configure manually:
+If render.yaml doesn't auto-detect or you prefer manual setup:
 
 1. **Create a new Web Service**
    - Go to https://dashboard.render.com
    - Click "New +" → "Web Service"
-   - Connect your Git repository
+   - Connect your Git repository: `https://github.com/vineetha0905/civic-connect-1`
 
-2. **Configure Settings**
+2. **Configure Settings** ⚠️ **CRITICAL SETTINGS**
    - **Name**: `civic-connect-ml` (or your preferred name)
    - **Environment**: `Python 3`
    - **Region**: Choose closest to your users
    - **Branch**: `main` (or your default branch)
-   - **Root Directory**: `ml-backend-with-image` (if your ML backend is in a subdirectory)
+   - **Root Directory**: `ml-backend-with-image` ⚠️ **MUST SET THIS**
    - **Build Command**: 
      ```bash
-     pip install --upgrade pip && pip install python-multipart && pip install -r requirements.txt
+     pip install --upgrade pip && pip install -r requirements.txt
      ```
    - **Start Command**:
      ```bash
      uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --timeout-keep-alive 75 --access-log --log-level info
      ```
+   - **Health Check Path**: `/health`
 
 3. **Environment Variables** (Optional)
    - `PORT`: Automatically set by Render (don't override)
@@ -149,6 +154,16 @@ For production use, consider upgrading:
 
 ## Troubleshooting
 
+### ⚠️ "Could not open requirements file" Error
+
+**This error means Render is looking in the wrong directory!**
+
+**Fix:**
+1. Go to your Render service settings
+2. Find "Root Directory" field
+3. Set it to: `ml-backend-with-image`
+4. Save and redeploy
+
 ### Deployment Fails
 
 1. **Check Build Logs**
@@ -156,7 +171,8 @@ For production use, consider upgrading:
    - Look for error messages during build
 
 2. **Common Issues**
-   - Missing dependencies: Check `requirements.txt`
+   - ❌ **"Could not open requirements file"**: Root Directory not set to `ml-backend-with-image`
+   - Missing dependencies: Check `requirements.txt` exists in `ml-backend-with-image/`
    - Python version mismatch: Ensure Python 3.9+ is used
    - Port binding: Ensure using `$PORT` environment variable
 

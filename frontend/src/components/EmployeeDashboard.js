@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import apiService from '../services/api';
 import { ArrowLeft, Map, List, MapPin, CheckCircle, User, LogOut, RefreshCw, ExternalLink } from 'lucide-react';
 import IssueMap from './IssueMap';
+import { getIssueImageUrl } from '../utils/imageUtils';
 
 const EmployeeDashboard = ({ user, setUser }) => {
   const navigate = useNavigate();
@@ -141,18 +142,6 @@ const EmployeeDashboard = ({ user, setUser }) => {
     });
   };
 
-  const getImageUrl = (issue) => {
-    try {
-      if (!issue) return null;
-      if (issue.image) return issue.image;
-      if (issue.imageUrl) return issue.imageUrl;
-      if (Array.isArray(issue.images) && issue.images.length > 0) {
-        const first = issue.images[0];
-        return typeof first === 'string' ? first : (first?.url || first?.secure_url || first?.secureUrl || null);
-      }
-      return null;
-    } catch (_e) { return null; }
-  };
 
   const getStatusBadge = (status) => {
     const statusConfig = {
@@ -402,7 +391,7 @@ const EmployeeDashboard = ({ user, setUser }) => {
               </div>
             ) : (
               filteredIssues.map((issue) => {
-                const imageUrl = getImageUrl(issue);
+                const imageUrl = getIssueImageUrl(issue);
                 const [lat, lng] = issue.location?.coordinates ? [
                   issue.location.coordinates.latitude,
                   issue.location.coordinates.longitude
@@ -412,19 +401,28 @@ const EmployeeDashboard = ({ user, setUser }) => {
                     key={issue._id || issue.id}
                     className="bg-white rounded-xl p-5 shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
                   >
-                    <div className={`flex ${imageUrl ? 'flex-col sm:flex-row' : ''} gap-4`}>
-                      {imageUrl && (
-                        <div className="flex-shrink-0 w-full sm:w-auto">
-                          <div className="rounded-lg overflow-hidden h-32 sm:h-36 w-full sm:w-[350px] sm:max-w-[400px] bg-gray-100 shadow-sm">
-                            <img
-                              src={imageUrl}
-                              alt={issue.title || 'Issue image'}
-                              className="w-full h-full object-cover"
-                              onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                            />
-                          </div>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <div className="flex-shrink-0 w-full sm:w-auto">
+                        <div className="rounded-lg overflow-hidden h-32 sm:h-36 w-full sm:w-[350px] sm:max-w-[400px] bg-gray-100 shadow-sm">
+                          <img
+                            src={imageUrl}
+                            alt={issue.title || 'Issue image'}
+                            className="w-full h-full object-cover"
+                          />
                         </div>
-                      )}
+                        <div className="flex justify-end mt-2">
+                          <button
+                            className="px-3.5 py-2 bg-gray-100 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Open image in new tab or modal
+                              window.open(imageUrl, '_blank');
+                            }}
+                          >
+                            View Image
+                          </button>
+                        </div>
+                      </div>
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start mb-3 gap-2">

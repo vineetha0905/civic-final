@@ -6,6 +6,108 @@ const { v4: uuidv4 } = require('uuid');
 
 class IssueController {
 
+  // Helper function to normalize image URLs (ensure fully qualified URLs)
+  _normalizeImageUrls(issues) {
+    const baseUrl = process.env.BACKEND_URL || process.env.BASE_URL || `http://localhost:${process.env.PORT || 5001}`;
+    
+    return issues.map((issue, index) => {
+      // Log first issue for debugging
+      if (index === 0) {
+        console.log('[Backend] Normalizing images for first issue:', {
+          issueId: issue._id || issue.id,
+          hasImages: !!issue.images,
+          imagesType: typeof issue.images,
+          imagesIsArray: Array.isArray(issue.images),
+          imagesLength: Array.isArray(issue.images) ? issue.images.length : 'N/A',
+          imagesFirst: Array.isArray(issue.images) && issue.images.length > 0 ? issue.images[0] : null
+        });
+      }
+      
+      // Normalize images array - ensure URLs are fully qualified
+      if (issue.images && Array.isArray(issue.images) && issue.images.length > 0) {
+        issue.images = issue.images.map((img, imgIndex) => {
+          // If image is already a string URL, keep it as-is or convert to object
+          if (typeof img === 'string') {
+            const url = img.trim();
+            if (url && this._isValidUrlString(url)) {
+              // Convert string to object format for consistency
+              return { url };
+            }
+            return null; // Invalid string, filter it out
+          }
+          
+          // If image is an object, ensure it has a valid URL
+          if (typeof img === 'object' && img !== null) {
+            // Preserve the URL field if it exists
+            let url = (img.url || img.secure_url || img.secureUrl || '').trim();
+            
+            if (!url || !this._isValidUrlString(url)) {
+              if (index === 0) {
+                console.warn(`[Backend] Image ${imgIndex} has invalid URL:`, img);
+              }
+              return null; // Filter out invalid images
+            }
+            
+            // Only fix URLs that are clearly incomplete (relative paths or filenames only)
+            // Skip if already a full URL (http/https/data URI) or Cloudinary URL
+            if (!url.startsWith('http://') && 
+                !url.startsWith('https://') && 
+                !url.startsWith('data:') &&
+                !url.includes('cloudinary.com') &&
+                !url.includes('res.cloudinary.com')) {
+              // Check if it looks like just a filename (no path separators)
+              if (!url.startsWith('/') && !url.includes('/')) {
+                url = `${baseUrl}/uploads/${url}`;
+              } else if (url.startsWith('/uploads/')) {
+                url = `${baseUrl}${url}`;
+              } else if (url.startsWith('uploads/')) {
+                url = `${baseUrl}/${url}`;
+              }
+            }
+            
+            // Return normalized image object
+            const normalized = {
+              url: url,
+              ...(img.publicId && { publicId: img.publicId }),
+              ...(img.caption && { caption: img.caption })
+            };
+            
+            if (index === 0 && imgIndex === 0) {
+              console.log('[Backend] Normalized first image:', normalized);
+            }
+            
+            return normalized;
+          }
+          
+          return null; // Unknown format, filter it out
+        }).filter(img => img !== null); // Remove null entries
+        
+        if (index === 0) {
+          console.log('[Backend] After normalization, images array:', issue.images);
+        }
+      } else {
+        if (index === 0) {
+          console.warn('[Backend] Issue has no images array or it is empty');
+        }
+      }
+      
+      return issue;
+    });
+  }
+  
+  // Helper function to validate URL string (similar to frontend)
+  _isValidUrlString(value) {
+    if (!value || typeof value !== 'string') return false;
+    const trimmed = value.trim();
+    if (trimmed === '' || trimmed === 'null' || trimmed === 'undefined' || trimmed === 'NaN') return false;
+    return true;
+  }
+  
+  // Alias for easier access
+  isValidUrlString(value) {
+    return this._isValidUrlString(value);
+  }
+
   // ===============================
   // GET ALL ISSUES
   // ===============================
@@ -115,12 +217,16 @@ class IssueController {
       const skip = (page - 1) * limit;
       const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
 
-      const issues = await Issue.find(filter)
+      let issues = await Issue.find(filter)
         .populate('reportedBy', 'name email profileImage')
         .populate('assignedTo', 'name email profileImage')
         .sort(sort)
         .skip(skip)
-        .limit(parseInt(limit));
+        .limit(parseInt(limit))
+        .lean(); // Use lean() for better performance
+
+      // Normalize image URLs to ensure they're fully qualified
+      issues = this._normalizeImageUrls(issues);
 
       const total = await Issue.countDocuments(filter);
 
@@ -296,10 +402,14 @@ class IssueController {
 
       const skip = (page - 1) * limit;
 
-      const issues = await Issue.find(filter)
+      let issues = await Issue.find(filter)
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(parseInt(limit, 10));
+        .limit(parseInt(limit, 10))
+        .lean(); // Use lean() for better performance and to get plain objects
+
+      // Normalize image URLs to ensure they're fully qualified
+      issues = this._normalizeImageUrls(issues);
 
       const total = await Issue.countDocuments(filter);
 
@@ -463,18 +573,49 @@ class IssueController {
           ? JSON.parse(req.body.images)
           : req.body.images;
 
+        console.log('[Backend createIssue] Received images:', JSON.stringify(parsed, null, 2));
+
         if (Array.isArray(parsed)) {
           images = parsed
-            .map(img => {
-              if (typeof img === 'string') return { url: img };
-              const url = img.url || img.secure_url;
-              return url ? { url, caption: img.caption } : null;
+            .map((img, idx) => {
+              // If image is a string URL, convert to object format
+              if (typeof img === 'string') {
+                console.log(`[Backend createIssue] Image ${idx} is string:`, img);
+                return { url: img.trim(), caption: 'Issue image' };
+              }
+              
+              // If image is an object, extract URL and preserve other fields
+              if (typeof img === 'object' && img !== null) {
+                const url = (img.url || img.secure_url || img.secureUrl || '').trim();
+                
+                if (!url || !this._isValidUrlString(url)) {
+                  console.warn(`[Backend createIssue] Image ${idx} has no valid URL:`, img);
+                  return null;
+                }
+                
+                console.log(`[Backend createIssue] Image ${idx} normalized:`, { url, publicId: img.publicId, caption: img.caption });
+                
+                // Preserve all relevant fields from the image object
+                return {
+                  url: url,
+                  ...(img.publicId && { publicId: img.publicId }),
+                  ...(img.caption && { caption: img.caption })
+                };
+              }
+              
+              console.warn(`[Backend createIssue] Image ${idx} is invalid type:`, typeof img, img);
+              return null;
             })
-            .filter(Boolean);
+            .filter(Boolean); // Remove null entries
         }
-      } catch (_) {}
+        
+        console.log('[Backend createIssue] Final images array:', JSON.stringify(images, null, 2));
+      } catch (error) {
+        console.error('[Backend createIssue] Error parsing images:', error);
+      }
 
       if ((!images || images.length === 0) && req.files?.images) {
+        console.log('[Backend createIssue] Using files.images instead:', req.files.images);
         images = req.files.images;
       }
 
@@ -499,12 +640,25 @@ class IssueController {
         tags,
         isAnonymous,
         reportedBy: req.user._id,
-        images,
+        images, // Store images array (already normalized above)
         documents: req.files?.documents || [],
         status: 'reported' // Explicitly set status to 'reported' - must stay 'reported' until employee accepts
       });
 
+      console.log('[Backend createIssue] Saving issue with images:', {
+        imagesCount: images.length,
+        images: images.map(img => ({ 
+          url: img.url ? img.url.substring(0, 60) + '...' : 'NO URL', 
+          publicId: img.publicId || 'NO PUBLIC ID',
+          caption: img.caption || 'NO CAPTION'
+        }))
+      });
+
       await issue.save();
+      
+      console.log('[Backend createIssue] Issue saved successfully. ID:', issue._id);
+      console.log('[Backend createIssue] Saved issue images (from DB):', JSON.stringify(issue.images, null, 2));
+      
       await issue.populate('reportedBy', 'name email profileImage');
 
       // AUTO-ASSIGN TO DEPARTMENT: Automatically assign issue to all employees in the department

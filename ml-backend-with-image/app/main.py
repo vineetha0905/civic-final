@@ -8,6 +8,16 @@ import sys
 import json
 import base64
 
+# CRITICAL FIX: Ensure python-multipart is available before FastAPI initializes
+# FastAPI 0.128.0 checks for it even for JSON-only endpoints
+try:
+    import multipart
+except ImportError:
+    # Install python-multipart if missing (common in Render deployments)
+    import subprocess
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "python-multipart>=0.0.5", "--quiet"], 
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
 # Initialize app first - this must work
 app = FastAPI(title="Civic ML Backend API", version="1.0.0")
 
@@ -68,7 +78,7 @@ async def submit_options():
     """Handle CORS preflight requests"""
     return {"status": "ok"}
 
-@app.post("/submit")
+@app.post("/submit", response_model=dict)
 async def submit_report(request: ReportRequest):
     """
     Submit a report for ML validation and classification.

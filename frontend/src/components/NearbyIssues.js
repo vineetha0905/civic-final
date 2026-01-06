@@ -5,6 +5,7 @@ import { ArrowLeft, Map, List, ThumbsUp, MessageCircle, RefreshCw } from 'lucide
 import { toast } from 'sonner';
 import IssueMap from './IssueMap';
 import apiService from '../services/api';
+import { getIssueImageUrl } from '../utils/imageUtils';
 
 const NearbyIssues = ({ user }) => {
   const navigate = useNavigate();
@@ -19,19 +20,6 @@ const NearbyIssues = ({ user }) => {
   const [geoStatus, setGeoStatus] = useState('idle');
   const [geoError, setGeoError] = useState('');
   const [previewUrl, setPreviewUrl] = useState('');
-
-  const getImageUrl = (issue) => {
-    try {
-      if (!issue) return null;
-      if (issue.image) return issue.image;
-      if (issue.imageUrl) return issue.imageUrl;
-      if (Array.isArray(issue.images) && issue.images.length > 0) {
-        const first = issue.images[0];
-        return typeof first === 'string' ? first : (first?.url || first?.secure_url || first?.secureUrl || null);
-      }
-      return null;
-    } catch (_e) { return null; }
-  };
 
   useEffect(() => {
     fetchIssues();
@@ -400,7 +388,7 @@ const NearbyIssues = ({ user }) => {
         <div className="px-6 py-4 bg-gray-50 min-h-[calc(100vh-200px)]">
           <div className="flex flex-col gap-4 max-w-full">
             {filteredIssues.map((issue) => {
-              const imageUrl = getImageUrl(issue);
+              const imageUrl = getIssueImageUrl(issue);
               const [lat, lng] = issue.coordinates || [];
               return (
                 <div
@@ -408,20 +396,28 @@ const NearbyIssues = ({ user }) => {
                   className="bg-white rounded-xl p-5 shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
                   onClick={() => navigate(`/issue/${issue.id}`)}
                 >
-                  <div className={`flex ${imageUrl ? 'flex-col sm:flex-row' : ''} gap-4`}>
-                    {imageUrl && (
-                      <div className="flex-shrink-0 w-full sm:w-auto">
-                        <div className="rounded-lg overflow-hidden h-32 sm:h-36 w-full sm:w-[350px] sm:max-w-[400px] bg-gray-100 shadow-sm">
-                          <img
-                            src={imageUrl}
-                            alt={issue.title || 'Issue image'}
-                            className="w-full h-full object-cover"
-                            onClick={(e) => { e.stopPropagation(); setPreviewUrl(imageUrl); }}
-                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                          />
-                        </div>
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-shrink-0 w-full sm:w-auto">
+                      <div className="rounded-lg overflow-hidden h-32 sm:h-36 w-full sm:w-[350px] sm:max-w-[400px] bg-gray-100 shadow-sm">
+                        <img
+                          src={imageUrl}
+                          alt={issue.title || 'Issue image'}
+                          className="w-full h-full object-cover"
+                          onClick={(e) => { e.stopPropagation(); setPreviewUrl(imageUrl); }}
+                        />
                       </div>
-                    )}
+                      <div className="flex justify-end mt-2">
+                        <button
+                          className="px-3.5 py-2 bg-gray-100 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors flex items-center gap-1.5"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPreviewUrl(imageUrl);
+                          }}
+                        >
+                          View Image
+                        </button>
+                      </div>
+                    </div>
                     
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start mb-3 gap-2">
@@ -447,17 +443,6 @@ const NearbyIssues = ({ user }) => {
                       </p>
 
                       <div className="flex gap-2 justify-end flex-wrap">
-                        {imageUrl && (
-                          <button
-                            className="px-3.5 py-2 bg-gray-100 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors flex items-center gap-1.5"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setPreviewUrl(imageUrl);
-                            }}
-                          >
-                            View Image
-                          </button>
-                        )}
                         <button
                           className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
                             upvotedIssues.has(issue.id)

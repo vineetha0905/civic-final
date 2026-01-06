@@ -1,33 +1,23 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LanguageContext } from '../App';
-import { ArrowLeft, Calendar, MapPin, ThumbsUp, Eye } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, ThumbsUp, Eye, Loader2 } from 'lucide-react';
 import apiService from '../services/api';
+import { getIssueImageUrl } from '../utils/imageUtils';
 
 const MyReports = ({ user }) => {
   const navigate = useNavigate();
   const { t } = useContext(LanguageContext);
   const [userIssues, setUserIssues] = useState([]);
   const [previewUrl, setPreviewUrl] = useState('');
-
-  const getImageUrl = (issue) => {
-    try {
-      if (!issue) return null;
-      if (issue.image) return issue.image;
-      if (issue.imageUrl) return issue.imageUrl;
-      if (Array.isArray(issue.images) && issue.images.length > 0) {
-        const first = issue.images[0];
-        return typeof first === 'string' ? first : (first?.url || first?.secure_url || null);
-      }
-      return null;
-    } catch (_e) { return null; }
-  };
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     fetchUserIssues();
   }, [user.id]);
 
   const fetchUserIssues = async () => {
+    setIsLoading(true);
     try {
       console.log('Fetching issues for user:', user.id);
       const response = await apiService.getUserIssues(user.id);
@@ -49,6 +39,22 @@ const MyReports = ({ user }) => {
         });
       }
 
+      // Debug: log all issues to check image structure
+      console.log('[MyReports] Fetched issues count:', issues.length);
+      if (issues.length > 0) {
+        console.log('[MyReports] First issue full structure:', JSON.stringify(issues[0], null, 2));
+        console.log('[MyReports] First issue images array:', issues[0].images);
+        console.log('[MyReports] First issue images type:', typeof issues[0].images);
+        console.log('[MyReports] First issue images is array?', Array.isArray(issues[0].images));
+        if (Array.isArray(issues[0].images) && issues[0].images.length > 0) {
+          console.log('[MyReports] First issue images[0]:', issues[0].images[0]);
+          console.log('[MyReports] First issue images[0] type:', typeof issues[0].images[0]);
+          if (typeof issues[0].images[0] === 'object') {
+            console.log('[MyReports] First issue images[0].url:', issues[0].images[0].url);
+          }
+        }
+      }
+      
       setUserIssues(issues);
     } catch (error) {
       console.error('Error fetching user issues:', error);
@@ -56,6 +62,8 @@ const MyReports = ({ user }) => {
       const savedIssues = JSON.parse(localStorage.getItem('user_issues') || '[]');
       const filteredIssues = savedIssues.filter(issue => issue.userId === user.id);
       setUserIssues(filteredIssues);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -110,7 +118,14 @@ const MyReports = ({ user }) => {
           </h1>
         </div>
 
-        {userIssues.length === 0 ? (
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-12 sm:py-16 px-4">
+            <Loader2 className="w-8 h-8 sm:w-10 sm:h-10 text-[#1e4359] animate-spin mb-4" />
+            <p className="text-gray-600 text-sm sm:text-base font-medium">
+              Loading your reports...
+            </p>
+          </div>
+        ) : userIssues.length === 0 ? (
           <div className="text-center py-12 sm:py-16 px-4">
             <div className="text-5xl sm:text-6xl mb-4 opacity-50">📋</div>
             <h3 className="text-gray-600 mb-2 font-medium text-lg sm:text-xl">
@@ -135,30 +150,31 @@ const MyReports = ({ user }) => {
                 onClick={() => navigate(`/issue/${issue._id || issue.id}`)}
               >
                 {(() => {
-                  const imageUrl = getImageUrl(issue);
+                  const imageUrl = getIssueImageUrl(issue);
+                  const [lat, lng] = issue.location?.coordinates ? [
+                    issue.location.coordinates.latitude,
+                    issue.location.coordinates.longitude
+                  ] : [];
                   return (
-                    <div className={`flex ${imageUrl ? 'flex-col sm:flex-row' : ''} gap-4`}>
-                      {imageUrl && (
-                        <div className="flex-shrink-0 w-full sm:w-auto">
-                          <div className="bg-gray-50 rounded-lg overflow-hidden h-32 sm:h-36 w-full sm:w-[350px] sm:max-w-[400px] shadow-sm">
-                            <img 
-                              src={imageUrl}
-                              alt={issue.title || 'Issue image'}
-                              className="w-full h-full object-cover block"
-                              onClick={(e) => { e.stopPropagation(); setPreviewUrl(imageUrl); }}
-                              onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                            />
-                          </div>
-                          <div className="flex justify-end mt-2">
-                            <button 
-                              className="bg-transparent text-[#1e4359] border-2 border-[#1e4359] px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all duration-300 hover:bg-[#1e4359] hover:text-white"
-                              onClick={(e) => { e.stopPropagation(); setPreviewUrl(imageUrl); }}
-                            >
-                              View Image
-                            </button>
-                          </div>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <div className="flex-shrink-0 w-full sm:w-auto">
+                        <div className="bg-gray-50 rounded-lg overflow-hidden h-32 sm:h-36 w-full sm:w-[350px] sm:max-w-[400px] shadow-sm">
+                          <img 
+                            src={imageUrl}
+                            alt={issue.title || 'Issue image'}
+                            className="w-full h-full object-cover block"
+                            onClick={(e) => { e.stopPropagation(); setPreviewUrl(imageUrl); }}
+                          />
                         </div>
-                      )}
+                        <div className="flex justify-end mt-2">
+                          <button 
+                            className="bg-transparent text-[#1e4359] border-2 border-[#1e4359] px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all duration-300 hover:bg-[#1e4359] hover:text-white"
+                            onClick={(e) => { e.stopPropagation(); setPreviewUrl(imageUrl); }}
+                          >
+                            View Image
+                          </button>
+                        </div>
+                      </div>
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start mb-4 gap-3">
@@ -168,7 +184,7 @@ const MyReports = ({ user }) => {
                             </h3>
                             <div className="text-xs sm:text-sm text-gray-600 flex items-center gap-1 mb-1">
                               <MapPin size={12} className="inline" />
-                              {issue.location?.name || 'Location not specified'}
+                              {lat && lng ? `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}` : (issue.location?.name || 'Location not specified')}
                             </div>
                             <div className="text-xs text-gray-400 flex items-center gap-2">
                               <Calendar size={12} />

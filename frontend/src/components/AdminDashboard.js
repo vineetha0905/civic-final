@@ -22,6 +22,7 @@ import {
 import IssueMap from './IssueMap';
 import ResolutionCharts from './analytics/ResolutionCharts';
 import apiService from '../services/api';
+import { getIssueImageUrl } from '../utils/imageUtils';
 
 const AdminDashboard = ({ user }) => {
   const navigate = useNavigate();
@@ -288,19 +289,28 @@ const AdminDashboard = ({ user }) => {
                     className="issue-card recent-issue-card"
                     onClick={() => navigate(`/issue/${issue._id || issue.id}`)}
                   >
-                    <div className="flex flex-col gap-4">
-                      {issue.images && issue.images.length > 0 && (
-                        <div className="recent-issue-image-container">
-                          <div className="rounded-lg overflow-hidden bg-gray-50 shadow-sm recent-issue-image">
-                            <img
-                              alt={issue.title}
-                              src={issue.images[0].url || issue.images[0].secure_url || issue.images[0].secureUrl}
-                              className="recent-issue-img"
-                            />
-                          </div>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <div className="flex-shrink-0 w-full sm:w-auto">
+                        <div className="rounded-lg overflow-hidden bg-gray-50 shadow-sm h-32 sm:h-36 w-full sm:w-[350px] sm:max-w-[400px]">
+                          <img
+                            alt={issue.title}
+                            src={getIssueImageUrl(issue)}
+                            className="w-full h-full object-cover"
+                          />
                         </div>
-                      )}
-                      <div className="recent-issue-content">
+                        <div className="flex justify-end mt-2">
+                          <button
+                            className="px-3 py-1.5 bg-gray-100 border border-gray-300 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(getIssueImageUrl(issue), '_blank');
+                            }}
+                          >
+                            View Image
+                          </button>
+                        </div>
+                      </div>
+                      <div className="recent-issue-content flex-1 min-w-0">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
                           <div>
                             <h4 style={{ fontSize: '1.1rem', fontWeight: '600', color: '#1e293b', marginBottom: '0.5rem' }}>
